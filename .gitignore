@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.svelte-kit/
+.vite/
+coverage/
+postgres-data/
+lgtm-data/
+.env
+project.env
+*.log

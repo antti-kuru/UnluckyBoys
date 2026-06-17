@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unlucky-boys-config
+data:
+  NODE_ENV: production
+  PORT: "8000"
+  CORS_ORIGIN: https://unluckyboys.example.com
+  SPORTSGAMER_BASE_URL: https://sportsgamer.gg
+  TEAM_NAMES: Unlucky Boys,Unlucky Boys HC,YMCA Esports
