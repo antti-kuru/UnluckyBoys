@@ -1,0 +1,143 @@
+---
+import type { GoalieStat, SkaterStat } from "@lib/types";
+
+type Props = {
+  skaterStats: SkaterStat[];
+  goalieStats: GoalieStat[];
+};
+
+const { skaterStats, goalieStats } = Astro.props;
+
+const skaterTotal = skaterStats.reduce(
+  (total, stat) => ({
+    gamesPlayed: total.gamesPlayed + stat.gamesPlayed,
+    goals: total.goals + stat.goals,
+    assists: total.assists + stat.assists,
+    points: total.points + stat.points,
+    plusMinus: total.plusMinus + stat.plusMinus,
+    penaltyMinutes: total.penaltyMinutes + stat.penaltyMinutes,
+    powerplayGoals: total.powerplayGoals + stat.powerplayGoals,
+    shorthandedGoals: total.shorthandedGoals + stat.shorthandedGoals,
+    gameWinningGoals: total.gameWinningGoals + stat.gameWinningGoals,
+    shots: total.shots + stat.shots,
+    hits: total.hits + stat.hits
+  }),
+  {
+    gamesPlayed: 0,
+    goals: 0,
+    assists: 0,
+    points: 0,
+    plusMinus: 0,
+    penaltyMinutes: 0,
+    powerplayGoals: 0,
+    shorthandedGoals: 0,
+    gameWinningGoals: 0,
+    shots: 0,
+    hits: 0
+  }
+);
+
+const goalieTotal = goalieStats.reduce(
+  (total, stat) => ({
+    gamesPlayed: total.gamesPlayed + stat.gamesPlayed,
+    wins: total.wins + stat.wins,
+    losses: total.losses + stat.losses,
+    overtimeLosses: total.overtimeLosses + stat.overtimeLosses,
+    saves: total.saves + stat.saves,
+    goalsAgainst: total.goalsAgainst + stat.goalsAgainst,
+    shutouts: total.shutouts + stat.shutouts,
+    penaltyMinutes: total.penaltyMinutes + stat.penaltyMinutes
+  }),
+  {
+    gamesPlayed: 0,
+    wins: 0,
+    losses: 0,
+    overtimeLosses: 0,
+    saves: 0,
+    goalsAgainst: 0,
+    shutouts: 0,
+    penaltyMinutes: 0
+  }
+);
+
+const skaterShootingPercentage = skaterTotal.shots > 0 ? ((skaterTotal.goals / skaterTotal.shots) * 100).toFixed(1) : "-";
+const goalieSavePercentage =
+  goalieTotal.saves + goalieTotal.goalsAgainst > 0
+    ? ((goalieTotal.saves / (goalieTotal.saves + goalieTotal.goalsAgainst)) * 100).toFixed(2)
+    : "-";
+const goalieGoalsAgainstAverage =
+  goalieTotal.gamesPlayed > 0 ? (goalieTotal.goalsAgainst / goalieTotal.gamesPlayed).toFixed(2) : "-";
+---
+
+<section class="stats-section">
+  <h2>Skater Seasons</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>League</th>
+          <th>Team</th>
+          <th>GP</th>
+          <th>G</th>
+          <th>A</th>
+          <th>P</th>
+          <th>+/-</th>
+          <th>PIM</th>
+          <th>PPG</th>
+          <th>SHG</th>
+          <th>GWG</th>
+          <th>S</th>
+          <th>S%</th>
+          <th>Hits</th>
+          <th>FOW%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {skaterStats.map((stat) => (
+          <tr>
+            <td>{stat.league}</td><td>{stat.teamName}</td><td>{stat.gamesPlayed}</td><td>{stat.goals}</td>
+            <td>{stat.assists}</td><td>{stat.points}</td><td>{stat.plusMinus}</td><td>{stat.penaltyMinutes}</td>
+            <td>{stat.powerplayGoals}</td><td>{stat.shorthandedGoals}</td><td>{stat.gameWinningGoals}</td>
+            <td>{stat.shots}</td><td>{stat.shootingPercentage ?? "-"}</td><td>{stat.hits}</td>
+            <td>{stat.faceoffWinPercentage ?? "-"}</td>
+          </tr>
+        ))}
+        {skaterStats.length > 0 && (
+          <tr class="total-row">
+            <td>Total</td><td>All teams</td><td>{skaterTotal.gamesPlayed}</td><td>{skaterTotal.goals}</td>
+            <td>{skaterTotal.assists}</td><td>{skaterTotal.points}</td><td>{skaterTotal.plusMinus}</td>
+            <td>{skaterTotal.penaltyMinutes}</td><td>{skaterTotal.powerplayGoals}</td>
+            <td>{skaterTotal.shorthandedGoals}</td><td>{skaterTotal.gameWinningGoals}</td>
+            <td>{skaterTotal.shots}</td><td>{skaterShootingPercentage}</td><td>{skaterTotal.hits}</td><td>-</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+  <h2>Goalie Seasons</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>League</th><th>Team</th><th>GP</th><th>W</th><th>L</th><th>OTL</th><th>Svs</th><th>GA</th><th>SV%</th><th>GAA</th><th>SO</th><th>PIM</th></tr>
+      </thead>
+      <tbody>
+        {goalieStats.map((stat) => (
+          <tr>
+            <td>{stat.league}</td><td>{stat.teamName}</td><td>{stat.gamesPlayed}</td><td>{stat.wins}</td>
+            <td>{stat.losses}</td><td>{stat.overtimeLosses}</td><td>{stat.saves}</td><td>{stat.goalsAgainst}</td>
+            <td>{stat.savePercentage ?? "-"}</td><td>{stat.goalsAgainstAverage ?? "-"}</td><td>{stat.shutouts}</td>
+            <td>{stat.penaltyMinutes}</td>
+          </tr>
+        ))}
+        {goalieStats.length > 0 && (
+          <tr class="total-row">
+            <td>Total</td><td>All teams</td><td>{goalieTotal.gamesPlayed}</td><td>{goalieTotal.wins}</td>
+            <td>{goalieTotal.losses}</td><td>{goalieTotal.overtimeLosses}</td><td>{goalieTotal.saves}</td>
+            <td>{goalieTotal.goalsAgainst}</td><td>{goalieSavePercentage}</td><td>{goalieGoalsAgainstAverage}</td>
+            <td>{goalieTotal.shutouts}</td><td>{goalieTotal.penaltyMinutes}</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</section>

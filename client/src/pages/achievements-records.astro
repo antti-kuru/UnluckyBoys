@@ -1,0 +1,35 @@
+---
+import AchievementList from "@components/AchievementList.astro";
+import RecordsPanel from "@components/RecordsPanel.astro";
+import SiteLayout from "@layouts/SiteLayout.astro";
+import { serverApi } from "@lib/api";
+import type { Achievement } from "@lib/types";
+
+type Records = Record<string, Record<string, string | number | null>>;
+
+let achievements: Achievement[] = [];
+let records: Records = {};
+let error = "";
+
+try {
+  const [achievementResponse, recordResponse] = await Promise.all([
+    serverApi<{ items: Achievement[] }>("/achievements"),
+    serverApi<Records>("/records")
+  ]);
+  achievements = achievementResponse.items;
+  records = recordResponse;
+} catch (caught) {
+  error = caught instanceof Error ? caught.message : "Could not load achievements and records.";
+}
+---
+
+<SiteLayout title="Achievements & Records | Unlucky Boys">
+  <section class="page-head">
+    <h1>Achievements & Records</h1>
+  </section>
+  {error && <section class="notice error">{error}</section>}
+  <div class="content-grid">
+    <AchievementList achievements={achievements} />
+    <RecordsPanel records={records} />
+  </div>
+</SiteLayout>

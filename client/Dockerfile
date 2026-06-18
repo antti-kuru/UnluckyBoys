@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install
 
-COPY index.html vite.config.ts svelte.config.js tsconfig.json tsconfig.node.json ./
+COPY astro.config.mjs tsconfig.json ./
 COPY src ./src
 COPY public ./public
 

@@ -1,0 +1,18 @@
+---
+import type { Achievement } from "@lib/types";
+
+type Props = {
+  achievements: Achievement[];
+};
+
+const { achievements } = Astro.props;
+---
+
+<section class="list">
+  {achievements.map((achievement) => (
+    <article class="wide-card">
+      <h2>{achievement.title}</h2>
+      <p>{achievement.body}</p>
+    </article>
+  ))}
+</section>

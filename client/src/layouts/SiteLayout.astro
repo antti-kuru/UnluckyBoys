@@ -1,0 +1,59 @@
+---
+import "../app.css";
+
+type Props = {
+  title?: string;
+  description?: string;
+};
+
+const {
+  title = "Unlucky Boys",
+  description = "Unlucky Boys esports NHL team hub"
+} = Astro.props;
+
+const nav = [
+  { href: "/", label: "Home" },
+  { href: "/news", label: "News" },
+  { href: "/roster", label: "Roster" },
+  { href: "/hall-of-fame", label: "Hall of Fame" },
+  { href: "/achievements-records", label: "Achievements & Records" },
+  { href: "/admin", label: "Admin" }
+];
+
+const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <link rel="icon" href="/brand/logo.png" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand">
+        <img class="brand-mark" src="/brand/logo.png" alt="Unlucky Boys logo" />
+        <span>
+          <strong>Unlucky Boys</strong>
+          <small>Burgernation</small>
+        </span>
+      </a>
+      <nav aria-label="Main navigation">
+        {nav.map((item) => (
+          <a class:list={[{ active: currentPath === item.href }]} href={item.href}>{item.label}</a>
+        ))}
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <strong>Unlucky Boys</strong>
+      <span>Contact: team@unluckyboys.local</span>
+      <a href="https://twitter.com/UnluckyBoysNHL" target="_blank" rel="noreferrer">X</a>
+    </footer>
+  </body>
+</html>

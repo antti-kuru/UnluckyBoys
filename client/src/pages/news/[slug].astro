@@ -1,0 +1,33 @@
+---
+export const prerender = false;
+
+import SiteLayout from "@layouts/SiteLayout.astro";
+import { serverApi } from "@lib/api";
+import { formatDate } from "@lib/format";
+import type { News } from "@lib/types";
+
+const slug = Astro.params.slug ?? "";
+let article: News | null = null;
+let error = "";
+
+try {
+  article = await serverApi<News>(`/news/${slug}`);
+} catch (caught) {
+  error = caught instanceof Error ? caught.message : "Could not load article.";
+}
+---
+
+<SiteLayout title={article ? `${article.title} | Unlucky Boys` : "News | Unlucky Boys"}>
+  {error && <section class="notice error">{error}</section>}
+  {article && (
+    <article class="article-page">
+      <img src={article.coverImageUrl || "/brand/banner.png"} alt={article.title} />
+      <div class="article-body">
+        <time>{formatDate(article.publishedAt)}</time>
+        <h1>{article.title}</h1>
+        <p class="lead">{article.summary}</p>
+        <p>{article.body}</p>
+      </div>
+    </article>
+  )}
+</SiteLayout>

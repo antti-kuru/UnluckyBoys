@@ -1,0 +1,61 @@
+---
+import NewsCard from "@components/NewsCard.astro";
+import SiteLayout from "@layouts/SiteLayout.astro";
+import { serverApi } from "@lib/api";
+import type { News } from "@lib/types";
+
+let news: News[] = [];
+let error = "";
+
+try {
+  const response = await serverApi<{ items: News[] }>("/news?limit=10&offset=0");
+  news = response.items;
+} catch (caught) {
+  error = caught instanceof Error ? caught.message : "Could not load news.";
+}
+---
+
+<SiteLayout title="News | Unlucky Boys">
+  <section class="page-head">
+    <h1>News</h1>
+  </section>
+  {error && <section class="notice error">{error}</section>}
+  <div class="list" data-news-list>
+    {news.map((article) => <NewsCard article={article} wide />)}
+  </div>
+  <button class="command" type="button" data-load-news data-offset={news.length}>Load more</button>
+</SiteLayout>
+
+<script>
+  import { api } from "@lib/api";
+  import { formatDate } from "@lib/format";
+  import type { News } from "@lib/types";
+
+  const list = document.querySelector<HTMLElement>("[data-news-list]");
+  const button = document.querySelector<HTMLButtonElement>("[data-load-news]");
+
+  function renderArticle(article: News) {
+    const image = article.coverImageUrl || "/brand/banner.png";
+    return `
+      <a class="card wide-card news-list-card" href="/news/${article.slug}">
+        <img src="${image}" alt="${article.title}" />
+        <time>${formatDate(article.publishedAt)}</time>
+        <h2>${article.title}</h2>
+        <p>${article.summary}</p>
+      </a>
+    `;
+  }
+
+  button?.addEventListener("click", async () => {
+    const offset = Number(button.dataset.offset ?? "0");
+    button.disabled = true;
+    try {
+      const response = await api<{ items: News[] }>(`/news?limit=10&offset=${offset}`);
+      list?.insertAdjacentHTML("beforeend", response.items.map(renderArticle).join(""));
+      button.dataset.offset = String(offset + response.items.length);
+      button.hidden = response.items.length === 0;
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>

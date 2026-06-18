@@ -1,0 +1,68 @@
+---
+import NewsCard from "@components/NewsCard.astro";
+import UpcomingGames from "@components/UpcomingGames.astro";
+import SiteLayout from "@layouts/SiteLayout.astro";
+import { serverApi } from "@lib/api";
+import type { News, UpcomingGame } from "@lib/types";
+
+let homeNews: News[] = [];
+let games: UpcomingGame[] = [];
+let error = "";
+
+try {
+  const [newsResponse, gamesResponse] = await Promise.all([
+    serverApi<{ items: News[] }>("/news?limit=3&offset=0"),
+    serverApi<{ items: UpcomingGame[] }>("/games/upcoming"),
+  ]);
+  homeNews = newsResponse.items;
+  games = gamesResponse.items;
+} catch (caught) {
+  error =
+    caught instanceof Error
+      ? caught.message
+      : "Could not load home page content.";
+}
+---
+
+<SiteLayout>
+  {error && <section class="notice error">{error}</section>}
+  <section class="home-grid">
+    <div class="intro-panel">
+      <p class="kicker">SportsGamer era team hub</p>
+      <h1>Unlucky Boys</h1>
+      <p class="welcome">Welcome to burgernation, the home of Unlucky Boys.</p>
+      <p>
+        News, roster, upcoming games, player profiles, achievements, and
+        all-time records for the club.
+      </p>
+      <div class="quick-links">
+        <a href="/roster">Roster</a>
+        <a href="/achievements-records">Records</a>
+      </div>
+    </div>
+    <UpcomingGames games={games} />
+  </section>
+
+  <section class="content-grid">
+    <div>
+      <div class="section-title">
+        <h2>Latest News</h2>
+        <a href="/news">All news</a>
+      </div>
+      <div class="cards">
+        {homeNews.map((article) => <NewsCard article={article} />)}
+      </div>
+    </div>
+    <aside class="panel logo-panel">
+      <img src="/brand/logo.png" alt="Unlucky Boys Burgernation logo" />
+      <a class="twitter-timeline" href="https://x.com/UnluckyBoysNHL"
+        >Posts by UnluckyBoysNHL</a
+      >
+      <script
+        is:inline
+        async
+        src="https://platform.x.com/widgets.js"
+        charset="utf-8"></script>
+    </aside>
+  </section>
+</SiteLayout>

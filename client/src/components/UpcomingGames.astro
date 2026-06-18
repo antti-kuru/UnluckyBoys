@@ -1,0 +1,32 @@
+---
+import type { UpcomingGame } from "@lib/types";
+import { formatDate } from "@lib/format";
+
+type Props = {
+  games: UpcomingGame[];
+};
+
+const { games } = Astro.props;
+---
+
+<section class="panel">
+  <div class="section-title">
+    <h2>Upcoming Games</h2>
+  </div>
+  {games.length ? (
+    <div class="game-list">
+      {games.map((game) => (
+        <article class="game-row">
+          <span>{game.competition}</span>
+          <strong>{game.opponent}</strong>
+          <time>{formatDate(game.startsAt)}</time>
+          {game.sportsGamerUrl && (
+            <a aria-label="Open SportsGamer game" href={game.sportsGamerUrl} target="_blank" rel="noreferrer">Open</a>
+          )}
+        </article>
+      ))}
+    </div>
+  ) : (
+    <p class="muted">No upcoming games have been added yet.</p>
+  )}
+</section>

@@ -1,0 +1,19 @@
+---
+import type { News } from "@lib/types";
+import { formatDate } from "@lib/format";
+
+type Props = {
+  article: News;
+  wide?: boolean;
+};
+
+const { article, wide = false } = Astro.props;
+const image = article.coverImageUrl || "/brand/banner.png";
+---
+
+<a class:list={["card", wide ? "wide-card news-list-card" : "news-card"]} href={`/news/${article.slug}`}>
+  <img src={image} alt={article.title} />
+  <time>{formatDate(article.publishedAt)}</time>
+  {wide ? <h2>{article.title}</h2> : <h3>{article.title}</h3>}
+  <p>{article.summary}</p>
+</a>

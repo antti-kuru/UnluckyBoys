@@ -1,0 +1,24 @@
+---
+import type { Player } from "@lib/types";
+import { playerInitials } from "@lib/format";
+
+type Props = {
+  player: Player;
+};
+
+const { player } = Astro.props;
+---
+
+<a class="player-card" href={`/players/${player.slug}`}>
+  {player.imageUrl ? (
+    <img src={player.imageUrl} alt={player.name} />
+  ) : (
+    <div class="player-placeholder">{playerInitials(player.name)}</div>
+  )}
+  <span class="card-meta">#{player.number} · {player.position} · {player.nationality || "FIN"}</span>
+  <strong>{player.name}</strong>
+  {player.nickname && <em>{player.nickname}</em>}
+  {(player.captain || player.alternateCaptain) && (
+    <small class="captain-badge">{player.captain ? "C" : "A"}</small>
+  )}
+</a>

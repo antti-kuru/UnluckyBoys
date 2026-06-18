@@ -4,7 +4,7 @@ Full-stack web application for the Unlucky Boys NHL esports team.
 
 ## Stack
 
-- Client: Svelte, Vite, TypeScript
+- Client: Astro, TypeScript
 - Server: Node.js, Hono, Postgres, Redis, bcrypt sessions, Zod validation
 - Data: SQL migrations with Flyway
 - Local platform: Docker Compose, Traefik, Postgres 17, Redis
@@ -39,7 +39,6 @@ Traefik dashboard is available at `http://localhost:8080`.
 - `/` shows the Burgernation intro, latest news, upcoming games, and a link to the X feed.
 - `/news` lists public news with load-more pagination.
 - `/news/:slug` shows a full news article with its image.
-- `/x` shows the embedded `@UnluckyBoysNHL` X timeline.
 - `/roster` shows active player cards.
 - `/players/:slug` shows player metadata and SportsGamer stat snapshots.
 - `/achievements-records` shows editable achievement paragraphs and all-time leaders.

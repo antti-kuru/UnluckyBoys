@@ -1,0 +1,37 @@
+---
+export const prerender = false;
+
+import PlayerProfile from "@components/PlayerProfile.astro";
+import StatsTables from "@components/StatsTables.astro";
+import SiteLayout from "@layouts/SiteLayout.astro";
+import { serverApi } from "@lib/api";
+import type { GoalieStat, Player, SkaterStat } from "@lib/types";
+
+const id = Astro.params.id ?? "";
+let player: Player | null = null;
+let skaterStats: SkaterStat[] = [];
+let goalieStats: GoalieStat[] = [];
+let error = "";
+
+try {
+  const [playerResponse, statsResponse] = await Promise.all([
+    serverApi<Player>(`/players/${id}`),
+    serverApi<{ skater: SkaterStat[]; goalie: GoalieStat[] }>(`/players/${id}/stats`)
+  ]);
+  player = playerResponse;
+  skaterStats = statsResponse.skater;
+  goalieStats = statsResponse.goalie;
+} catch (caught) {
+  error = caught instanceof Error ? caught.message : "Could not load player.";
+}
+---
+
+<SiteLayout title={player ? `${player.name} | Unlucky Boys` : "Player | Unlucky Boys"}>
+  {error && <section class="notice error">{error}</section>}
+  {player && (
+    <>
+      <PlayerProfile player={player} />
+      <StatsTables skaterStats={skaterStats} goalieStats={goalieStats} />
+    </>
+  )}
+</SiteLayout>

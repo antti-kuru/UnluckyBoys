@@ -1,0 +1,26 @@
+---
+import PlayerCard from "@components/PlayerCard.astro";
+import SiteLayout from "@layouts/SiteLayout.astro";
+import { serverApi } from "@lib/api";
+import type { Player } from "@lib/types";
+
+let roster: Player[] = [];
+let error = "";
+
+try {
+  const response = await serverApi<{ items: Player[] }>("/roster");
+  roster = response.items;
+} catch (caught) {
+  error = caught instanceof Error ? caught.message : "Could not load roster.";
+}
+---
+
+<SiteLayout title="Roster | Unlucky Boys">
+  <section class="page-head">
+    <h1>Roster</h1>
+  </section>
+  {error && <section class="notice error">{error}</section>}
+  <div class="roster-grid">
+    {roster.map((player) => <PlayerCard player={player} />)}
+  </div>
+</SiteLayout>

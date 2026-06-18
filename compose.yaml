@@ -23,9 +23,11 @@ services:
   client:
     build: client
     restart: unless-stopped
+    environment:
+      - API_BASE_URL=http://server:8000/api
+      - API_PROXY_TARGET=http://server:8000
     volumes:
       - ./client:/app
-      - /app/node_modules
     depends_on:
       - server
     labels:

@@ -4,7 +4,7 @@ import { config, teamNames } from "../config.js";
 import { withTransaction } from "../lib/db.js";
 import { redis } from "../lib/redis.js";
 
-type SkaterSeason = {
+export type SkaterSeason = {
   league: string;
   team: string;
   gp: number;
@@ -13,9 +13,16 @@ type SkaterSeason = {
   points: number;
   plusMinus: number;
   pim: number;
+  powerplayGoals: number;
+  shorthandedGoals: number;
+  gameWinningGoals: number;
+  shots: number;
+  shootingPercentage: number | null;
+  hits: number;
+  faceoffWinPercentage: number | null;
 };
 
-type GoalieSeason = {
+export type GoalieSeason = {
   league: string;
   team: string;
   gp: number;
@@ -30,14 +37,24 @@ type GoalieSeason = {
   pim: number;
 };
 
+export type PlayerCareerStats = {
+  skater: SkaterSeason[];
+  goalie: GoalieSeason[];
+};
+
+const SPORTSGAMER_FETCH_ATTEMPTS = 3;
+
 function num(value: string | undefined) {
-  const parsed = Number((value ?? "").replace("%", "").replace("-", "0"));
+  const normalized = (value ?? "").trim().replace("%", "").replace("−", "-");
+  if (!normalized || normalized === "-") return 0;
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function nullableNum(value: string | undefined) {
-  if (!value || value === "-") return null;
-  const parsed = Number(value.replace("%", ""));
+  const normalized = value?.trim().replace("%", "").replace("−", "-");
+  if (!normalized || normalized === "-") return null;
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -45,7 +62,7 @@ function rowCells(row: unknown, $: cheerio.CheerioAPI) {
   return $(row as never).find("td, th").map((_, cell) => $(cell).text().trim().replace(/\s+/g, " ")).get();
 }
 
-export function parsePlayerCareerStats(html: string) {
+export function parsePlayerCareerStats(html: string, teamFilter: string[] | null = teamNames) {
   const $ = cheerio.load(html);
   const skater: SkaterSeason[] = [];
   const goalie: GoalieSeason[] = [];
@@ -56,7 +73,7 @@ export function parsePlayerCareerStats(html: string) {
     if (header.includes("GP") && header.includes("G") && header.includes("A") && header.includes("+/-")) {
       for (const row of rows) {
         const cells = rowCells(row, $);
-        if (cells.length < 8 || !teamNames.includes(cells[1])) continue;
+        if (cells.length < 8 || (teamFilter && !teamFilter.includes(cells[1]))) continue;
         skater.push({
           league: cells[0],
           team: cells[1],
@@ -65,14 +82,21 @@ export function parsePlayerCareerStats(html: string) {
           assists: num(cells[4]),
           points: num(cells[5]),
           plusMinus: num(cells[6]),
-          pim: num(cells[7])
+          pim: num(cells[7]),
+          powerplayGoals: num(cells[8]),
+          shorthandedGoals: num(cells[9]),
+          gameWinningGoals: num(cells[10]),
+          shots: num(cells[11]),
+          shootingPercentage: nullableNum(cells[12]),
+          hits: num(cells[13]),
+          faceoffWinPercentage: nullableNum(cells[14])
         });
       }
     }
     if (header.includes("GP") && header.includes("W") && header.includes("SV%") && header.includes("GAA")) {
       for (const row of rows) {
         const cells = rowCells(row, $);
-        if (cells.length < 11 || !teamNames.includes(cells[1])) continue;
+        if (cells.length < 11 || (teamFilter && !teamFilter.includes(cells[1]))) continue;
         goalie.push({
           league: cells[0],
           team: cells[1],
@@ -94,13 +118,39 @@ export function parsePlayerCareerStats(html: string) {
   return { skater, goalie };
 }
 
-export async function syncPlayerFromSportsGamer(client: pg.PoolClient, playerId: string, sourceUrl: string) {
-  const response = await fetch(sourceUrl.startsWith("http") ? sourceUrl : `${config.SPORTSGAMER_BASE_URL}${sourceUrl}`);
+export async function fetchPlayerCareerStats(sourceUrl: string, teamFilter: string[] | null = teamNames): Promise<PlayerCareerStats> {
+  const url = sourceUrl.startsWith("http") ? sourceUrl : `${config.SPORTSGAMER_BASE_URL}${sourceUrl}`;
+  const response = await fetchWithRetry(url);
   if (!response.ok) {
     throw new Error(`SportsGamer request failed: ${response.status}`);
   }
   const html = await response.text();
-  const parsed = parsePlayerCareerStats(html);
+  return parsePlayerCareerStats(html, teamFilter);
+}
+
+async function fetchWithRetry(url: string) {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= SPORTSGAMER_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      if (response.ok || response.status < 500 || attempt === SPORTSGAMER_FETCH_ATTEMPTS) {
+        return response;
+      }
+      lastError = new Error(`SportsGamer request failed: ${response.status}`);
+    } catch (caught) {
+      lastError = caught;
+      if (attempt === SPORTSGAMER_FETCH_ATTEMPTS) break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, attempt * 700));
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("SportsGamer request failed");
+}
+
+export async function syncPlayerFromSportsGamer(client: pg.PoolClient, playerId: string, sourceUrl: string) {
+  const parsed = await fetchPlayerCareerStats(sourceUrl);
 
   await client.query("delete from player_season_stats where player_id = $1", [playerId]);
   await client.query("delete from goalie_season_stats where player_id = $1", [playerId]);
@@ -108,9 +158,27 @@ export async function syncPlayerFromSportsGamer(client: pg.PoolClient, playerId:
   for (const row of parsed.skater) {
     await client.query(
       `insert into player_season_stats
-       (player_id, league, team_name, games_played, goals, assists, points, plus_minus, penalty_minutes)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [playerId, row.league, row.team, row.gp, row.goals, row.assists, row.points, row.plusMinus, row.pim]
+       (player_id, league, team_name, games_played, goals, assists, points, plus_minus, penalty_minutes,
+        powerplay_goals, shorthanded_goals, game_winning_goals, shots, shooting_percentage, hits, faceoff_win_percentage)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+      [
+        playerId,
+        row.league,
+        row.team,
+        row.gp,
+        row.goals,
+        row.assists,
+        row.points,
+        row.plusMinus,
+        row.pim,
+        row.powerplayGoals,
+        row.shorthandedGoals,
+        row.gameWinningGoals,
+        row.shots,
+        row.shootingPercentage,
+        row.hits,
+        row.faceoffWinPercentage
+      ]
     );
   }
 

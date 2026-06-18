@@ -1,0 +1,199 @@
+<section class="page-head">
+  <h1>Admin</h1>
+  <button class="icon-button" aria-label="Log out" type="button" data-logout hidden>Out</button>
+</section>
+
+<section class="notice" data-admin-message hidden></section>
+
+<form class="admin-form compact" data-login-form>
+  <label>Email<input name="email" type="email" value="admin@unluckyboys.local" /></label>
+  <label>Password<input name="password" type="password" /></label>
+  <button class="command" type="submit">Log in</button>
+</form>
+
+<section data-admin-panel hidden>
+  <p class="muted" data-admin-user></p>
+  <div class="admin-grid">
+    <form class="admin-form" data-news-form>
+      <h2>News</h2>
+      <label>Title<input name="title" /></label>
+      <label>Summary<input name="summary" /></label>
+      <label>Body<textarea name="body"></textarea></label>
+      <label>Image URL<input name="coverImageUrl" value="/brand/banner.png" /></label>
+      <button class="command" type="submit">Save news</button>
+    </form>
+    <form class="admin-form" data-player-form>
+      <h2>Roster</h2>
+      <label>Name<input name="name" /></label>
+      <label>Nickname<input name="nickname" /></label>
+      <label>Position<input name="position" value="C" /></label>
+      <label>Number<input name="number" type="number" value="0" /></label>
+      <label>Nationality<input name="nationality" value="FIN" /></label>
+      <label class="checkbox-label"><input name="captain" type="checkbox" />Captain</label>
+      <label class="checkbox-label"><input name="alternateCaptain" type="checkbox" />Alternate captain</label>
+      <label>Image URL<input name="imageUrl" /></label>
+      <label>SportsGamer URL<input name="sportsGamerUrl" /></label>
+      <label>Bio<textarea name="bio"></textarea></label>
+      <input name="active" type="hidden" value="true" />
+      <input name="rosterOrder" type="hidden" value="10" />
+      <button class="command" type="submit">Save player</button>
+    </form>
+    <form class="admin-form" data-achievement-form>
+      <h2>Achievements</h2>
+      <label>Title<input name="title" /></label>
+      <label>Body<textarea name="body"></textarea></label>
+      <label>Order<input name="displayOrder" type="number" value="10" /></label>
+      <button class="command" type="submit">Save achievement</button>
+    </form>
+    <section class="admin-form">
+      <h2>SportsGamer</h2>
+      <button class="command" type="button" data-sync>Sync stats</button>
+    </section>
+  </div>
+  <section class="admin-lists">
+    <h2>Current Content</h2>
+    <div data-manage-list></div>
+  </section>
+</section>
+
+<script>
+  import { api, deleteJson, postJson } from "@lib/api";
+  import type { Achievement, News, Player } from "@lib/types";
+
+  type Admin = { email: string; displayName: string };
+
+  const loginForm = document.querySelector<HTMLFormElement>("[data-login-form]");
+  const adminPanel = document.querySelector<HTMLElement>("[data-admin-panel]");
+  const adminUser = document.querySelector<HTMLElement>("[data-admin-user]");
+  const message = document.querySelector<HTMLElement>("[data-admin-message]");
+  const logoutButton = document.querySelector<HTMLButtonElement>("[data-logout]");
+  const newsForm = document.querySelector<HTMLFormElement>("[data-news-form]");
+  const playerForm = document.querySelector<HTMLFormElement>("[data-player-form]");
+  const achievementForm = document.querySelector<HTMLFormElement>("[data-achievement-form]");
+  const syncButton = document.querySelector<HTMLButtonElement>("[data-sync]");
+  const manageList = document.querySelector<HTMLElement>("[data-manage-list]");
+
+  function showMessage(text: string, error = false) {
+    if (!message) return;
+    message.textContent = text;
+    message.hidden = false;
+    message.classList.toggle("error", error);
+  }
+
+  function formPayload(form: HTMLFormElement) {
+    const data = new FormData(form);
+    const payload: Record<string, FormDataEntryValue | boolean | number> = {};
+
+    data.forEach((value, key) => {
+      payload[key] = value;
+    });
+
+    form.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((input) => {
+      payload[input.name] = input.checked;
+    });
+
+    form.querySelectorAll<HTMLInputElement>('input[type="number"]').forEach((input) => {
+      payload[input.name] = Number(input.value);
+    });
+
+    if ("active" in payload) payload.active = payload.active === "true";
+    return payload;
+  }
+
+  function setAuthenticated(admin: Admin | null) {
+    if (loginForm) loginForm.hidden = Boolean(admin);
+    if (adminPanel) adminPanel.hidden = !admin;
+    if (logoutButton) logoutButton.hidden = !admin;
+    if (adminUser) adminUser.textContent = admin ? `Signed in as ${admin.displayName}` : "";
+  }
+
+  function manageRow(label: string, kind: string, id: string) {
+    return `
+      <div class="manage-row">
+        <span>${label}</span>
+        <button aria-label="Delete ${kind}" class="icon-button" type="button" data-delete-kind="${kind}" data-delete-id="${id}">Del</button>
+      </div>
+    `;
+  }
+
+  async function loadAdmin() {
+    const me = await api<{ admin: Admin | null }>("/admin/auth/me");
+    setAuthenticated(me.admin);
+
+    if (!me.admin) return;
+
+    const [newsResponse, achievementResponse, rosterResponse] = await Promise.all([
+      api<{ items: News[] }>("/news?limit=50&offset=0"),
+      api<{ items: Achievement[] }>("/achievements"),
+      api<{ items: Player[] }>("/roster")
+    ]);
+
+    if (!manageList) return;
+    manageList.innerHTML = [
+      ...newsResponse.items.map((item) => manageRow(item.title, "news", item.slug)),
+      ...rosterResponse.items.map((item) => manageRow(item.name, "players", item.slug)),
+      ...achievementResponse.items.map((item) => manageRow(item.title, "achievements", item.id))
+    ].join("");
+  }
+
+  loginForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await postJson("/admin/auth/login", formPayload(loginForm));
+      await loadAdmin();
+    } catch (caught) {
+      showMessage(caught instanceof Error ? caught.message : "Login failed.", true);
+    }
+  });
+
+  logoutButton?.addEventListener("click", async () => {
+    await postJson("/admin/auth/logout", {});
+    setAuthenticated(null);
+  });
+
+  newsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await postJson("/admin/news", formPayload(newsForm));
+    newsForm.reset();
+    newsForm.coverImageUrl.value = "/brand/banner.png";
+    showMessage("News saved.");
+    await loadAdmin();
+  });
+
+  playerForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await postJson("/admin/players", formPayload(playerForm));
+    playerForm.reset();
+    playerForm.position.value = "C";
+    playerForm.number.value = "0";
+    playerForm.nationality.value = "FIN";
+    showMessage("Player saved.");
+    await loadAdmin();
+  });
+
+  achievementForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await postJson("/admin/achievements", formPayload(achievementForm));
+    achievementForm.reset();
+    achievementForm.displayOrder.value = "10";
+    showMessage("Achievement saved.");
+    await loadAdmin();
+  });
+
+  syncButton?.addEventListener("click", async () => {
+    showMessage("Sync started.");
+    const result = await postJson<{ syncedPlayers: number }>("/admin/integrations/sportsgamer/sync", {});
+    showMessage(`Synced ${result.syncedPlayers} player profiles.`);
+  });
+
+  manageList?.addEventListener("click", async (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-delete-kind]");
+    if (!button) return;
+    await deleteJson(`/admin/${button.dataset.deleteKind}/${button.dataset.deleteId}`);
+    await loadAdmin();
+  });
+
+  loadAdmin().catch((caught) => {
+    showMessage(caught instanceof Error ? caught.message : "Could not load admin.", true);
+  });
+</script>

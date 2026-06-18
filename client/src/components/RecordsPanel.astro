@@ -1,0 +1,24 @@
+---
+import { titleizeRecordKey } from "@lib/format";
+
+type RecordValue = Record<string, string | number | null>;
+
+type Props = {
+  records: Record<string, RecordValue>;
+};
+
+const { records } = Astro.props;
+---
+
+<aside class="panel">
+  <h2>All-Time Leaders</h2>
+  <div class="records">
+    {Object.entries(records).map(([key, value]) => (
+      <div class="record-row">
+        <span>{titleizeRecordKey(key)}</span>
+        <strong>{value?.name ?? "Pending"}</strong>
+        <em>{value?.value ?? "-"}</em>
+      </div>
+    ))}
+  </div>
+</aside>

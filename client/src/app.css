@@ -422,6 +422,10 @@ table {
   border-collapse: collapse;
 }
 
+.stats-section table {
+  min-width: 1180px;
+}
+
 th,
 td {
   padding: 0.8rem;
@@ -431,6 +435,12 @@ td {
 
 th {
   color: var(--gold);
+}
+
+.total-row td {
+  color: var(--gold);
+  font-weight: 850;
+  background: var(--surface-2);
 }
 
 .admin-grid {

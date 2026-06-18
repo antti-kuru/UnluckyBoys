@@ -45,6 +45,13 @@ export type SkaterStat = {
   points: number;
   plusMinus: number;
   penaltyMinutes: number;
+  powerplayGoals: number;
+  shorthandedGoals: number;
+  gameWinningGoals: number;
+  shots: number;
+  shootingPercentage: number | null;
+  hits: number;
+  faceoffWinPercentage: number | null;
 };
 
 export type GoalieStat = {
