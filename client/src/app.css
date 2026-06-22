@@ -109,6 +109,10 @@ nav a:hover,
   background: var(--accent);
 }
 
+.menu-toggle {
+  display: none;
+}
+
 main {
   width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
@@ -205,8 +209,7 @@ main {
 
 .cards,
 .list,
-.game-list,
-.records {
+.game-list {
   display: grid;
   gap: 0.8rem;
 }
@@ -290,6 +293,21 @@ main {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.roster-groups,
+.roster-group {
+  display: grid;
+  gap: 1rem;
+}
+
+.roster-groups {
+  gap: 2rem;
+}
+
+.roster-group h2 {
+  margin: 0;
+  color: var(--gold);
 }
 
 .player-card {
@@ -414,6 +432,54 @@ main {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #050505;
+}
+
+.season-finishes {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.season-finishes h2 {
+  margin: 0;
+  color: var(--gold);
+}
+
+.records-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.records-panel h2 {
+  margin: 0;
+  color: var(--gold);
+}
+
+.records {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.record-row {
+  grid-template-columns: 1fr;
+  align-items: start;
+  min-height: 118px;
+}
+
+.record-row span {
+  color: var(--gold);
+  font-weight: 850;
+}
+
+.record-row strong {
+  font-size: 1.15rem;
+}
+
+.record-row em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 850;
 }
 
 table {
@@ -567,8 +633,60 @@ footer {
   }
 
   .site-header {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .menu-toggle {
     display: grid;
-    justify-items: start;
+    gap: 5px;
+    place-content: center;
+    width: 44px;
+    height: 44px;
+    margin-left: auto;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--gold);
+    background: var(--surface);
+  }
+
+  .menu-toggle span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    transition: transform 150ms ease, opacity 150ms ease;
+  }
+
+  .menu-open .menu-toggle span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+
+  .menu-open .menu-toggle span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .menu-open .menu-toggle span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  .main-nav {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .menu-open .main-nav {
+    display: flex;
+  }
+
+  .main-nav a {
+    width: 100%;
   }
 
   nav {
@@ -582,13 +700,15 @@ footer {
 }
 
 @media (max-width: 980px) {
-  .roster-grid {
+  .roster-grid,
+  .records {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 620px) {
-  .roster-grid {
+  .roster-grid,
+  .records {
     grid-template-columns: 1fr;
   }
 }

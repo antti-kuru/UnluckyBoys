@@ -1,0 +1,18 @@
+---
+import SiteLayout from "@layouts/SiteLayout.astro";
+import { historyParagraphs } from "@lib/history";
+---
+
+<SiteLayout
+  title="History | Unlucky Boys"
+  description="The history of the Unlucky Boys NHL Esports organization"
+>
+  <section class="page-head">
+    <h1>History</h1>
+  </section>
+  <article class="article-page">
+    <div class="article-body">
+      {historyParagraphs.map((paragraph) => <p>{paragraph}</p>)}
+    </div>
+  </article>
+</SiteLayout>

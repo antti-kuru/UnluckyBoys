@@ -8,16 +8,17 @@ type Props = {
 
 const {
   title = "Unlucky Boys",
-  description = "Unlucky Boys esports NHL team hub"
+  description = "Unlucky Boys esports NHL team hub",
 } = Astro.props;
 
 const nav = [
   { href: "/", label: "Home" },
   { href: "/news", label: "News" },
   { href: "/roster", label: "Roster" },
+  { href: "/history", label: "History" },
   { href: "/hall-of-fame", label: "Hall of Fame" },
   { href: "/achievements-records", label: "Achievements & Records" },
-  { href: "/admin", label: "Admin" }
+  { href: "/admin", label: "Admin" },
 ];
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
@@ -36,15 +37,29 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     <header class="site-header">
       <a href="/" class="brand">
         <img class="brand-mark" src="/brand/logo.png" alt="Unlucky Boys logo" />
-        <span>
-          <strong>Unlucky Boys</strong>
-          <small>Burgernation</small>
-        </span>
       </a>
-      <nav aria-label="Main navigation">
-        {nav.map((item) => (
-          <a class:list={[{ active: currentPath === item.href }]} href={item.href}>{item.label}</a>
-        ))}
+      <button
+        class="menu-toggle"
+        type="button"
+        aria-label="Open navigation menu"
+        aria-controls="main-navigation"
+        aria-expanded="false"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav id="main-navigation" class="main-nav" aria-label="Main navigation">
+        {
+          nav.map((item) => (
+            <a
+              class:list={[{ active: currentPath === item.href }]}
+              href={item.href}
+            >
+              {item.label}
+            </a>
+          ))
+        }
       </nav>
     </header>
     <main>
@@ -53,7 +68,41 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     <footer>
       <strong>Unlucky Boys</strong>
       <span>Contact: team@unluckyboys.local</span>
-      <a href="https://twitter.com/UnluckyBoysNHL" target="_blank" rel="noreferrer">X</a>
+      <a
+        href="https://twitter.com/UnluckyBoysNHL"
+        target="_blank"
+        rel="noreferrer">X</a
+      >
     </footer>
+    <script is:inline>
+      const header = document.querySelector(".site-header");
+      const toggle = document.querySelector(".menu-toggle");
+      const navigation = document.querySelector("#main-navigation");
+
+      const setMenuOpen = (open) => {
+        header?.classList.toggle("menu-open", open);
+        toggle?.setAttribute("aria-expanded", String(open));
+        toggle?.setAttribute(
+          "aria-label",
+          open ? "Close navigation menu" : "Open navigation menu",
+        );
+      };
+
+      toggle?.addEventListener("click", () => {
+        setMenuOpen(!header?.classList.contains("menu-open"));
+      });
+
+      navigation?.addEventListener("click", (event) => {
+        if (event.target instanceof HTMLAnchorElement) setMenuOpen(false);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") setMenuOpen(false);
+      });
+
+      window.matchMedia("(min-width: 821px)").addEventListener("change", (event) => {
+        if (event.matches) setMenuOpen(false);
+      });
+    </script>
   </body>
 </html>

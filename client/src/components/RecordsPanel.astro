@@ -10,8 +10,8 @@ type Props = {
 const { records } = Astro.props;
 ---
 
-<aside class="panel">
-  <h2>All-Time Leaders</h2>
+<section class="panel records-panel">
+  <h2>All-Time Records</h2>
   <div class="records">
     {Object.entries(records).map(([key, value]) => (
       <div class="record-row">
@@ -21,4 +21,4 @@ const { records } = Astro.props;
       </div>
     ))}
   </div>
-</aside>
+</section>

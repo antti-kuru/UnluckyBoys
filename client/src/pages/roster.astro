@@ -13,6 +13,17 @@ try {
 } catch (caught) {
   error = caught instanceof Error ? caught.message : "Could not load roster.";
 }
+
+const rosterGroups = [
+  { title: "Forwards", positions: ["LW", "C", "RW"] },
+  { title: "Defenseman", positions: ["LD", "RD"] },
+  { title: "Goalies", positions: ["G"] },
+].map((group) => ({
+  ...group,
+  players: roster.filter((player) =>
+    group.positions.includes(player.position.toUpperCase()),
+  ),
+}));
 ---
 
 <SiteLayout title="Roster | Unlucky Boys">
@@ -20,7 +31,18 @@ try {
     <h1>Roster</h1>
   </section>
   {error && <section class="notice error">{error}</section>}
-  <div class="roster-grid">
-    {roster.map((player) => <PlayerCard player={player} />)}
+  <div class="roster-groups">
+    {rosterGroups.map((group) => (
+      <section class="roster-group" aria-labelledby={`roster-${group.title.toLowerCase()}`}>
+        <h2 id={`roster-${group.title.toLowerCase()}`}>{group.title}</h2>
+        {group.players.length > 0 ? (
+          <div class="roster-grid">
+            {group.players.map((player) => <PlayerCard player={player} />)}
+          </div>
+        ) : (
+          <p class="muted">No active {group.title.toLowerCase()}.</p>
+        )}
+      </section>
+    ))}
   </div>
 </SiteLayout>

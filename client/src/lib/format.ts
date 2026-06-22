@@ -14,5 +14,8 @@ export function playerInitials(name: string) {
 }
 
 export function titleizeRecordKey(value: string) {
-  return value.replace(/([A-Z])/g, " $1");
+  return value
+    .replace(/([A-Z])/g, " $1")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
