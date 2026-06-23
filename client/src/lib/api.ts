@@ -57,6 +57,23 @@ export function postJson<T>(path: string, body: unknown) {
   return api<T>(path, { method: "POST", body: JSON.stringify(body) });
 }
 
+export async function uploadImage(path: string, image: File) {
+  const body = new FormData();
+  body.set("image", image);
+  const response = await fetch(`/api${path}`, {
+    method: "POST",
+    credentials: "include",
+    body
+  });
+
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(result.error ?? "Upload failed");
+  }
+
+  return response.json() as Promise<{ url: string }>;
+}
+
 export function putJson<T>(path: string, body: unknown) {
   return api<T>(path, { method: "PUT", body: JSON.stringify(body) });
 }

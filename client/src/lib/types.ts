@@ -36,6 +36,43 @@ export type UpcomingGame = {
   sportsGamerUrl?: string | null;
 };
 
+export type LeagueStandingTeam = {
+  rank: number;
+  teamId: number;
+  teamName: string;
+  abbreviation: string | null;
+  logoUrl: string | null;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  overtimeWins: number;
+  overtimeLosses: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  powerplayPercentage: number | null;
+  penaltyKillPercentage: number | null;
+  penaltyMinutes: number;
+  shots: number;
+  hits: number;
+  currentStreak: string | null;
+};
+
+export type LeagueStandingGroup = {
+  groupId: number;
+  groupName: string | null;
+  teams: LeagueStandingTeam[];
+};
+
+export type LeagueStandings = {
+  leagueId: number;
+  leagueName: string;
+  sourceUrl: string;
+  groups: LeagueStandingGroup[];
+};
+
 export type SkaterStat = {
   league: string;
   teamName: string;

@@ -1,13 +1,16 @@
 ---
+import LeagueStandings from "@components/LeagueStandings.astro";
 import NewsCard from "@components/NewsCard.astro";
 import UpcomingGames from "@components/UpcomingGames.astro";
 import SiteLayout from "@layouts/SiteLayout.astro";
 import { serverApi } from "@lib/api";
-import type { News, UpcomingGame } from "@lib/types";
+import type { LeagueStandings as LeagueStandingsType, News, UpcomingGame } from "@lib/types";
 
 let homeNews: News[] = [];
 let games: UpcomingGame[] = [];
+let standings: LeagueStandingsType | null = null;
 let error = "";
+let standingsError = "";
 
 try {
   const [newsResponse, gamesResponse] = await Promise.all([
@@ -22,24 +25,24 @@ try {
       ? caught.message
       : "Could not load home page content.";
 }
+
+try {
+  standings = await serverApi<LeagueStandingsType>("/league-standings/250");
+} catch (caught) {
+  standingsError =
+    caught instanceof Error
+      ? caught.message
+      : "Could not load league table.";
+}
 ---
 
 <SiteLayout>
   {error && <section class="notice error">{error}</section>}
   <section class="home-grid">
-    <div class="intro-panel">
-      <h1>Unlucky Boys</h1>
-      <p>
-        You just entered into Burgernation, the home of the Unlucky Boys. This
-        is the home for the relatively old but spicy NHL Esports organization
-        founded in 2017. Here you can find relative information of the team.
-      </p>
-    </div>
-    <UpcomingGames games={games} />
-  </section>
-
-  <section class="content-grid">
-    <div>
+    <div class="home-main">
+      <div class="intro-panel">
+        <p>You just entered into Burgernation, the home of the Unlucky Boys.</p>
+      </div>
       <div class="section-title">
         <h2>Latest News</h2>
         <a href="/news">All news</a>
@@ -47,17 +50,19 @@ try {
       <div class="cards">
         {homeNews.map((article) => <NewsCard article={article} />)}
       </div>
+      <LeagueStandings standings={standings} error={standingsError} />
     </div>
-    <aside class="panel logo-panel">
-      <img src="/brand/logo.png" alt="Unlucky Boys Burgernation logo" />
-      <a class="twitter-timeline" href="https://x.com/UnluckyBoysNHL"
-        >Posts by UnluckyBoysNHL</a
-      >
-      <script
-        is:inline
-        async
-        src="https://platform.x.com/widgets.js"
-        charset="utf-8"></script>
+    <aside class="home-sidebar">
+      <UpcomingGames games={games} />
+      <div class="panel x-panel">
+        <div class="x-feed">
+          <iframe
+            src="https://widgets.sociablekit.com/twitter-feed/iframe/25691535"
+            width="100%"
+            height="1000"
+            title="UnluckyBoysNHL X feed"></iframe>
+        </div>
+      </div>
     </aside>
   </section>
 </SiteLayout>

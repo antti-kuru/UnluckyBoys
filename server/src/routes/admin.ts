@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { z } from "zod";
+import { config } from "../config.js";
 import { query } from "../lib/db.js";
 import { badRequest } from "../lib/http.js";
 import { slugify } from "../lib/slug.js";
@@ -23,6 +27,11 @@ const achievementSchema = z.object({
   displayOrder: z.number().int().min(0).default(0)
 });
 
+const playerImageSchema = z.union([
+  z.string().url(),
+  z.string().regex(/^\/(?:brand|players)\/[a-zA-Z0-9._/-]+$/)
+]);
+
 const playerSchema = z.object({
   name: z.string().min(2),
   nickname: z.string().optional().default(""),
@@ -31,7 +40,7 @@ const playerSchema = z.object({
   nationality: z.string().optional().default(""),
   captain: z.boolean().default(false),
   alternateCaptain: z.boolean().default(false),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  imageUrl: playerImageSchema.optional().or(z.literal("")),
   bio: z.string().optional().default(""),
   active: z.boolean().default(true),
   rosterOrder: z.number().int().min(0).default(0),
@@ -62,6 +71,37 @@ adminRoutes.get("/auth/me", async (c) => {
 });
 
 adminRoutes.use("*", requireAdmin);
+
+const uploadKinds = ["news", "players"] as const;
+const imageExtensions: Record<string, string> = {
+  "image/gif": ".gif",
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp"
+};
+const maxImageBytes = 8 * 1024 * 1024;
+
+adminRoutes.post("/uploads/:kind", async (c) => {
+  const kind = c.req.param("kind");
+  if (!uploadKinds.includes(kind as (typeof uploadKinds)[number])) {
+    return c.json({ error: "Invalid upload category" }, 400);
+  }
+
+  const body = await c.req.parseBody();
+  const image = body.image;
+  if (!(image instanceof File)) return c.json({ error: "Select an image to upload" }, 400);
+
+  const extension = imageExtensions[image.type];
+  if (!extension) return c.json({ error: "Use a JPG, PNG, WebP, or GIF image" }, 400);
+  if (image.size > maxImageBytes) return c.json({ error: "Image must be 8 MB or smaller" }, 400);
+
+  const uploadDirectory = path.join(config.UPLOAD_ROOT, kind);
+  const filename = `${randomUUID()}${extension}`;
+  await mkdir(uploadDirectory, { recursive: true });
+  await writeFile(path.join(uploadDirectory, filename), Buffer.from(await image.arrayBuffer()));
+
+  return c.json({ url: `/${kind}/${filename}` }, 201);
+});
 
 adminRoutes.post("/news", async (c) => {
   const payload = newsSchema.parse(await c.req.json());

@@ -4,7 +4,7 @@ import { redis } from "../lib/redis.js";
 import { query } from "../lib/db.js";
 import { notFound, parsePagination } from "../lib/http.js";
 import { teamNames } from "../config.js";
-import { fetchPlayerCareerStats, type GoalieSeason, type SkaterSeason } from "../integrations/sportsgamer.js";
+import { fetchLeagueStandings, fetchPlayerCareerStats, type GoalieSeason, type SkaterSeason } from "../integrations/sportsgamer.js";
 
 export const publicRoutes = new Hono();
 
@@ -96,6 +96,17 @@ publicRoutes.get("/players/:slug/stats", async (c) => {
   }
 
   return c.json(await loadStoredPlayerStats(player.rows[0].id));
+});
+
+publicRoutes.get("/league-standings/:leagueId", async (c) => {
+  const leagueId = Number(c.req.param("leagueId"));
+
+  if (!Number.isInteger(leagueId) || leagueId <= 0) {
+    return c.json({ error: "Invalid league id" }, 400);
+  }
+
+  const standings = await cacheJson(`sportsgamer:league-standings:${leagueId}`, 300, () => fetchLeagueStandings(leagueId));
+  return c.json(standings);
 });
 
 async function readSportsGamerStatsCache(slug: string) {

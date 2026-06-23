@@ -5,6 +5,8 @@ services:
     volumes:
       - ./server:/app
       - /app/node_modules
+      - ./client/public/news:/app/uploads/news
+      - ./client/public/players:/app/uploads/players
     env_file:
       - project.env
     depends_on:

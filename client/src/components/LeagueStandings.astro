@@ -1,0 +1,92 @@
+---
+import type { LeagueStandings as LeagueStandingsType } from "@lib/types";
+
+type Props = {
+  standings: LeagueStandingsType | null;
+  error?: string;
+};
+
+const { standings, error = "" } = Astro.props;
+const hasTeams = Boolean(standings?.groups.some((group) => group.teams.length > 0));
+
+function formatPercent(value: number | null) {
+  return value === null ? "-" : `${value.toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+---
+
+<section class="standings-section">
+  <div class="section-title">
+    <h2>League Table</h2>
+    {standings && <a href={standings.sourceUrl}>SportsGamer</a>}
+  </div>
+
+  {error && <div class="notice error">League table unavailable.</div>}
+
+  {!error && standings && hasTeams && (
+    <div class="standings-groups">
+      {standings.groups.map((group) => (
+        <div class="standings-group">
+          {group.groupName && <h3>{group.groupName}</h3>}
+          <div class="table-wrap">
+            <table class="standings-table">
+              <thead>
+                <tr>
+                  <th class="standing-rank">#</th>
+                  <th>Team</th>
+                  <th>GP</th>
+                  <th>W</th>
+                  <th>OTW</th>
+                  <th>L</th>
+                  <th>OTL</th>
+                  <th>PTS</th>
+                  <th>GF</th>
+                  <th>GA</th>
+                  <th>+/-</th>
+                  <th>PP%</th>
+                  <th>PK%</th>
+                  <th>PIM</th>
+                  <th>S</th>
+                  <th>Hits</th>
+                  <th>Strk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.teams.map((team) => (
+                  <tr class:list={{ "standings-own-team": team.teamName === "Unlucky Boys" }}>
+                    <td class="standing-rank">{team.rank}</td>
+                    <td>
+                      <div class="standing-team">
+                        {team.logoUrl && <img src={team.logoUrl} alt="" loading="lazy" />}
+                        <span>
+                          <strong>{team.teamName}</strong>
+                          {team.abbreviation && <small>{team.abbreviation}</small>}
+                        </span>
+                      </div>
+                    </td>
+                    <td>{team.gamesPlayed}</td>
+                    <td>{team.wins}</td>
+                    <td>{team.overtimeWins}</td>
+                    <td>{team.losses}</td>
+                    <td>{team.overtimeLosses}</td>
+                    <td>{team.points}</td>
+                    <td>{team.goalsFor}</td>
+                    <td>{team.goalsAgainst}</td>
+                    <td>{team.goalDifference}</td>
+                    <td>{formatPercent(team.powerplayPercentage)}</td>
+                    <td>{formatPercent(team.penaltyKillPercentage)}</td>
+                    <td>{team.penaltyMinutes}</td>
+                    <td>{team.shots}</td>
+                    <td>{team.hits}</td>
+                    <td>{team.currentStreak ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  {!error && !hasTeams && <div class="notice">No league table available.</div>}
+</section>

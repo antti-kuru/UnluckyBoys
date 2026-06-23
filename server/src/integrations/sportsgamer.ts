@@ -42,6 +42,43 @@ export type PlayerCareerStats = {
   goalie: GoalieSeason[];
 };
 
+export type LeagueStandingTeam = {
+  rank: number;
+  teamId: number;
+  teamName: string;
+  abbreviation: string | null;
+  logoUrl: string | null;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  overtimeWins: number;
+  overtimeLosses: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  powerplayPercentage: number | null;
+  penaltyKillPercentage: number | null;
+  penaltyMinutes: number;
+  shots: number;
+  hits: number;
+  currentStreak: string | null;
+};
+
+export type LeagueStandingGroup = {
+  groupId: number;
+  groupName: string | null;
+  teams: LeagueStandingTeam[];
+};
+
+export type LeagueStandings = {
+  leagueId: number;
+  leagueName: string;
+  sourceUrl: string;
+  groups: LeagueStandingGroup[];
+};
+
 const SPORTSGAMER_FETCH_ATTEMPTS = 3;
 
 function num(value: string | undefined) {
@@ -60,6 +97,11 @@ function nullableNum(value: string | undefined) {
 
 function rowCells(row: unknown, $: cheerio.CheerioAPI) {
   return $(row as never).find("td, th").map((_, cell) => $(cell).text().trim().replace(/\s+/g, " ")).get();
+}
+
+function decodeText(value: unknown) {
+  if (typeof value !== "string") return "";
+  return cheerio.load(value).text();
 }
 
 export function parsePlayerCareerStats(html: string, teamFilter: string[] | null = teamNames) {
@@ -118,6 +160,97 @@ export function parsePlayerCareerStats(html: string, teamFilter: string[] | null
   return { skater, goalie };
 }
 
+type SportsGamerStandingTeam = {
+  gamesPlayed?: number;
+  wins?: number;
+  losses?: number;
+  ties?: number;
+  otWins?: number;
+  otLosses?: number;
+  points?: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
+  ppPercentage?: number | null;
+  pkPercentage?: number | null;
+  penaltyMinutes?: number;
+  shots?: number;
+  hits?: number;
+  currentStreak?: string | null;
+  team?: {
+    id?: number;
+    name?: string;
+    abbreviation?: string | null;
+    logo?: string | null;
+  };
+};
+
+type SportsGamerStandingGroup = {
+  groupId?: number;
+  teams?: SportsGamerStandingTeam[];
+};
+
+type SportsGamerStandingsPage = {
+  props?: {
+    league?: {
+      id?: number;
+      name?: string;
+      groups?: SportsGamerStandingGroup[];
+    };
+    groupNames?: string[];
+  };
+};
+
+export function parseLeagueStandingsPage(html: string, fallbackLeagueId: number, sourceUrl: string): LeagueStandings {
+  const $ = cheerio.load(html);
+  const pageData = $("[data-page]").attr("data-page");
+
+  if (!pageData) {
+    throw new Error("SportsGamer standings data not found");
+  }
+
+  const parsed = JSON.parse(pageData) as SportsGamerStandingsPage;
+  const league = parsed.props?.league;
+  const groups = league?.groups ?? [];
+
+  return {
+    leagueId: league?.id ?? fallbackLeagueId,
+    leagueName: decodeText(league?.name) || `League ${fallbackLeagueId}`,
+    sourceUrl,
+    groups: groups.map((group, groupIndex) => ({
+      groupId: group.groupId ?? groupIndex,
+      groupName: parsed.props?.groupNames?.[groupIndex] ? decodeText(parsed.props.groupNames[groupIndex]) : null,
+      teams: (group.teams ?? []).map((standing, index) => {
+        const goalsFor = num(String(standing.goalsFor ?? 0));
+        const goalsAgainst = num(String(standing.goalsAgainst ?? 0));
+
+        return {
+          rank: index + 1,
+          teamId: standing.team?.id ?? 0,
+          teamName: decodeText(standing.team?.name) || "Unknown team",
+          abbreviation: standing.team?.abbreviation ? decodeText(standing.team.abbreviation) : null,
+          logoUrl: standing.team?.logo ?? null,
+          gamesPlayed: num(String(standing.gamesPlayed ?? 0)),
+          wins: num(String(standing.wins ?? 0)),
+          losses: num(String(standing.losses ?? 0)),
+          ties: num(String(standing.ties ?? 0)),
+          overtimeWins: num(String(standing.otWins ?? 0)),
+          overtimeLosses: num(String(standing.otLosses ?? 0)),
+          points: num(String(standing.points ?? 0)),
+          goalsFor,
+          goalsAgainst,
+          goalDifference: goalsFor - goalsAgainst,
+          powerplayPercentage: nullableNum(String(standing.ppPercentage ?? "")),
+          penaltyKillPercentage: nullableNum(String(standing.pkPercentage ?? "")),
+          penaltyMinutes: num(String(standing.penaltyMinutes ?? 0)),
+          shots: num(String(standing.shots ?? 0)),
+          hits: num(String(standing.hits ?? 0)),
+          currentStreak: standing.currentStreak ?? null
+        };
+      })
+    }))
+  };
+}
+
 export async function fetchPlayerCareerStats(sourceUrl: string, teamFilter: string[] | null = teamNames): Promise<PlayerCareerStats> {
   const url = sourceUrl.startsWith("http") ? sourceUrl : `${config.SPORTSGAMER_BASE_URL}${sourceUrl}`;
   const response = await fetchWithRetry(url);
@@ -126,6 +259,18 @@ export async function fetchPlayerCareerStats(sourceUrl: string, teamFilter: stri
   }
   const html = await response.text();
   return parsePlayerCareerStats(html, teamFilter);
+}
+
+export async function fetchLeagueStandings(leagueId: number): Promise<LeagueStandings> {
+  const sourceUrl = `${config.SPORTSGAMER_BASE_URL}/leagues/${leagueId}/standings`;
+  const response = await fetchWithRetry(sourceUrl);
+
+  if (!response.ok) {
+    throw new Error(`SportsGamer standings request failed: ${response.status}`);
+  }
+
+  const html = await response.text();
+  return parseLeagueStandingsPage(html, leagueId, sourceUrl);
 }
 
 async function fetchWithRetry(url: string) {

@@ -8,6 +8,7 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(32).default("change-this-session-secret-before-production"),
   CORS_ORIGIN: z.string().default("http://localhost:8000"),
   SPORTSGAMER_BASE_URL: z.string().url().default("https://sportsgamer.gg"),
+  UPLOAD_ROOT: z.string().default("/app/uploads"),
   TEAM_NAMES: z.string().default("Unlucky Boys,Unlucky Boys HC,YMCA Esports"),
   ADMIN_EMAIL: z.string().email().default("admin@unluckyboys.local"),
   ADMIN_PASSWORD: z.string().min(8).default("change-me-now")
