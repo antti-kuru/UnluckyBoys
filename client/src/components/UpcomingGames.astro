@@ -1,32 +1,70 @@
 ---
-import type { UpcomingGame } from "@lib/types";
-import { formatDate } from "@lib/format";
+import type { TeamScheduleGame } from "@lib/types";
 
 type Props = {
-  games: UpcomingGame[];
+  title: string;
+  games: TeamScheduleGame[];
+  emptyText: string;
+  variant?: "compact" | "full";
 };
 
-const { games } = Astro.props;
+const { title, games, emptyText, variant = "compact" } = Astro.props;
+const watchUrl = "https://twitch.tv/anhelkuruu";
+
+function formatDay(value: string) {
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+}
+
+function formatTime(value: string) {
+  return new Intl.DateTimeFormat("en", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
 ---
 
-<section class="panel">
+<section class:list={["panel", "schedule-panel", variant === "full" && "schedule-panel-full"]}>
   <div class="section-title">
-    <h2>Upcoming Games</h2>
+    <h2>{title}</h2>
   </div>
   {games.length ? (
-    <div class="game-list">
+    <div class="schedule-list">
       {games.map((game) => (
-        <article class="game-row">
-          <span>{game.competition}</span>
-          <strong>{game.opponent}</strong>
-          <time>{formatDate(game.startsAt)}</time>
-          {game.sportsGamerUrl && (
-            <a aria-label="Open SportsGamer game" href={game.sportsGamerUrl} target="_blank" rel="noreferrer">Open</a>
-          )}
+        <article class:list={["schedule-row", variant === "full" && "schedule-row-full", game.played && "schedule-row-played"]}>
+          <time class="schedule-time" datetime={game.date}>
+            <span>{formatDay(game.date)}</span>
+            <strong>{formatTime(game.date)}</strong>
+          </time>
+
+          <div class="schedule-matchup">
+            <div class="schedule-team">
+              {game.homeTeam.logoUrl && <img src={game.homeTeam.logoUrl} alt="" loading="lazy" />}
+              <strong>{game.homeTeam.abbreviation ?? game.homeTeam.name}</strong>
+            </div>
+
+            <div class:list={["schedule-score", !game.played && "schedule-score-pending"]}>
+              {game.played && game.goalsHome !== null && game.goalsAway !== null ? (
+                <>
+                  <strong>{game.goalsHome}</strong>
+                  <span>-</span>
+                  <strong>{game.goalsAway}</strong>
+                </>
+              ) : (
+                <span>vs</span>
+              )}
+              {game.overtime && <small>OT</small>}
+            </div>
+
+            <div class="schedule-team schedule-team-away">
+              {game.awayTeam.logoUrl && <img src={game.awayTeam.logoUrl} alt="" loading="lazy" />}
+              <strong>{game.awayTeam.abbreviation ?? game.awayTeam.name}</strong>
+            </div>
+          </div>
+
+          {variant === "full" && game.played && game.status && <span class="schedule-status">{game.status}</span>}
+
+          {!game.played && <a class="schedule-watch" href={watchUrl} target="_blank" rel="noreferrer">Watch here</a>}
         </article>
       ))}
     </div>
   ) : (
-    <p class="muted">No upcoming games have been added yet.</p>
+    <p class="muted">{emptyText}</p>
   )}
 </section>

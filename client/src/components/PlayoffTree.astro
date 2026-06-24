@@ -1,0 +1,50 @@
+---
+import type { LeaguePlayoffs } from "@lib/types";
+
+type Props = {
+  playoffs: LeaguePlayoffs | null;
+  teamId: number;
+};
+
+const { playoffs, teamId } = Astro.props;
+---
+
+<section class="season-block">
+  <div class="section-title">
+    <h2>Playoff Tree</h2>
+    {playoffs && <a href={playoffs.sourceUrl}>SportsGamer</a>}
+  </div>
+
+  {playoffs && playoffs.rounds.length > 0 ? (
+    <div class="playoff-tree">
+      {playoffs.rounds.map((round) => (
+        <section class="playoff-round">
+          <h3>{round.description}</h3>
+          <div class="playoff-matchups">
+            {round.matchups.map((matchup) => (
+              <article
+                class:list={{
+                  "playoff-matchup": true,
+                  "playoff-matchup-ub": matchup.homeTeam.id === teamId || matchup.awayTeam.id === teamId
+                }}
+              >
+                <div class="playoff-team">
+                  {matchup.homeTeam.logoUrl && <img src={matchup.homeTeam.logoUrl} alt="" loading="lazy" />}
+                  <strong>{matchup.homeTeam.abbreviation ?? matchup.homeTeam.name}</strong>
+                  <span>{matchup.homeWins}</span>
+                </div>
+                <div class="playoff-team">
+                  {matchup.awayTeam.logoUrl && <img src={matchup.awayTeam.logoUrl} alt="" loading="lazy" />}
+                  <strong>{matchup.awayTeam.abbreviation ?? matchup.awayTeam.name}</strong>
+                  <span>{matchup.awayWins}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  ) : (
+    <p class="muted">No playoff bracket found.</p>
+  )}
+</section>

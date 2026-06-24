@@ -8,16 +8,21 @@ type Props = {
 
 const { standings, error = "" } = Astro.props;
 const hasTeams = Boolean(standings?.groups.some((group) => group.teams.length > 0));
+const highlightedTeamIds = new Set([159]);
+const highlightedTeamNames = new Set(["Unlucky Boys", "Unlucky Boys HC", "YMCA Esports"]);
 
 function formatPercent(value: number | null) {
   return value === null ? "-" : `${value.toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
+function isHighlightedTeam(teamId: number, teamName: string) {
+  return highlightedTeamIds.has(teamId) || highlightedTeamNames.has(teamName);
 }
 ---
 
 <section class="standings-section">
   <div class="section-title">
     <h2>League Table</h2>
-    {standings && <a href={standings.sourceUrl}>SportsGamer</a>}
   </div>
 
   {error && <div class="notice error">League table unavailable.</div>}
@@ -29,6 +34,12 @@ function formatPercent(value: number | null) {
           {group.groupName && <h3>{group.groupName}</h3>}
           <div class="table-wrap">
             <table class="standings-table">
+              <colgroup>
+                <col class="standings-rank-col" />
+                <col class="standings-team-col" />
+                <col span="9" class="standings-core-stat-col" />
+                <col span="6" class="standings-extra-stat-col" />
+              </colgroup>
               <thead>
                 <tr>
                   <th class="standing-rank">#</th>
@@ -52,7 +63,7 @@ function formatPercent(value: number | null) {
               </thead>
               <tbody>
                 {group.teams.map((team) => (
-                  <tr class:list={{ "standings-own-team": team.teamName === "Unlucky Boys" }}>
+                  <tr class:list={{ "standings-own-team": isHighlightedTeam(team.teamId, team.teamName) }}>
                     <td class="standing-rank">{team.rank}</td>
                     <td>
                       <div class="standing-team">

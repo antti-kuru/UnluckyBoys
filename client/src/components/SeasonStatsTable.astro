@@ -1,0 +1,112 @@
+---
+import type { TeamSeasonGoalieStats, TeamSeasonPlayerStats } from "@lib/types";
+
+type Props = {
+  players: TeamSeasonPlayerStats[];
+  goalies?: TeamSeasonGoalieStats[];
+};
+
+const { players, goalies = [] } = Astro.props;
+
+function statCells(stat: TeamSeasonPlayerStats["regular"]) {
+  return [stat.gamesPlayed, stat.goals, stat.assists, stat.totalPoints, stat.penaltyMinutes, stat.plusMinus];
+}
+
+function goalieCells(stat: TeamSeasonGoalieStats["regular"]) {
+  return [
+    stat.gamesPlayed,
+    stat.wins,
+    stat.losses,
+    stat.overtimeLosses,
+    stat.savePercentage === null ? "-" : `${stat.savePercentage}%`,
+    stat.goalsAgainstAverage ?? "-",
+    stat.shutouts,
+  ];
+}
+---
+
+<section class="season-block">
+  <div class="section-title">
+    <h2>UB Skater Stats</h2>
+  </div>
+  <div class="table-wrap">
+    <table class="season-stats-table">
+      <colgroup>
+        <col class="season-player-col" />
+        <col span="5" class="season-stat-col" />
+        <col class="season-stat-col season-stat-divider-col" />
+        <col span="6" class="season-stat-col" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th rowspan="2">Player</th>
+          <th class="season-stats-regular-heading" colspan="6">Regular Season</th>
+          <th colspan="6">Playoffs</th>
+        </tr>
+        <tr>
+          <th>GP</th><th>G</th><th>A</th><th>TP</th><th>PIM</th><th class="season-stat-divider">+/-</th>
+          <th>GP</th><th>G</th><th>A</th><th>TP</th><th>PIM</th><th>+/-</th>
+        </tr>
+      </thead>
+      <tbody>
+        {players.map((player) => (
+          <tr>
+            <td>
+              {player.playerUrl ? (
+                <a class="season-player-link" href={player.playerUrl} target="_blank" rel="noreferrer">{player.playerName}</a>
+              ) : (
+                player.playerName
+              )}
+            </td>
+            {statCells(player.regular).map((value, index) => <td class:list={[index === 5 && "season-stat-divider"]}>{value}</td>)}
+            {statCells(player.playoffs).map((value) => <td>{value}</td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {goalies.length > 0 && (
+    <>
+      <div class="section-title season-subtitle">
+        <h2>UB Goalie Stats</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="season-stats-table season-goalie-stats-table">
+          <colgroup>
+            <col class="season-player-col" />
+            <col span="6" class="season-stat-col" />
+            <col class="season-stat-col season-stat-divider-col" />
+            <col span="7" class="season-stat-col" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th rowspan="2">Goalie</th>
+              <th class="season-stats-regular-heading" colspan="7">Regular Season</th>
+              <th colspan="7">Playoffs</th>
+            </tr>
+            <tr>
+              <th>GP</th><th>W</th><th>L</th><th>OTL</th><th>SV%</th><th>GAA</th><th class="season-stat-divider">SO</th>
+              <th>GP</th><th>W</th><th>L</th><th>OTL</th><th>SV%</th><th>GAA</th><th>SO</th>
+            </tr>
+          </thead>
+          <tbody>
+            {goalies.map((goalie) => (
+              <tr>
+                <td>
+                  {goalie.playerUrl ? (
+                    <a class="season-player-link" href={goalie.playerUrl} target="_blank" rel="noreferrer">{goalie.playerName}</a>
+                  ) : (
+                    goalie.playerName
+                  )}
+                </td>
+                {goalieCells(goalie.regular).map((value, index) => <td class:list={[index === 6 && "season-stat-divider"]}>{value}</td>)}
+                {goalieCells(goalie.playoffs).map((value) => <td>{value}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )}
+</section>

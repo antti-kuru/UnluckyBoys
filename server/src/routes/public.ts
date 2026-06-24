@@ -4,7 +4,15 @@ import { redis } from "../lib/redis.js";
 import { query } from "../lib/db.js";
 import { notFound, parsePagination } from "../lib/http.js";
 import { teamNames } from "../config.js";
-import { fetchLeagueStandings, fetchPlayerCareerStats, type GoalieSeason, type SkaterSeason } from "../integrations/sportsgamer.js";
+import {
+  fetchLeaguePlayoffs,
+  fetchLeagueStandings,
+  fetchPlayerCareerStats,
+  fetchTeamSchedule,
+  fetchTeamSeasonStats,
+  type GoalieSeason,
+  type SkaterSeason
+} from "../integrations/sportsgamer.js";
 
 export const publicRoutes = new Hono();
 
@@ -34,7 +42,7 @@ publicRoutes.get("/news/:slug", async (c) => {
 publicRoutes.get("/roster", async (c) => {
   const result = await query(
     `select slug, name, nickname, position, jersey_number as "number", nationality,
-            captain, alternate_captain as "alternateCaptain", image_url as "imageUrl"
+            handedness, captain, alternate_captain as "alternateCaptain", image_url as "imageUrl"
      from players
      where active = true
      order by roster_order asc, name asc`
@@ -45,7 +53,7 @@ publicRoutes.get("/roster", async (c) => {
 publicRoutes.get("/hall-of-fame", async (c) => {
   const result = await query(
     `select slug, name, nickname, position, jersey_number as "number", nationality,
-            captain, alternate_captain as "alternateCaptain", image_url as "imageUrl"
+            handedness, captain, alternate_captain as "alternateCaptain", image_url as "imageUrl"
      from players
      where active = false
      order by roster_order asc, name asc`
@@ -56,7 +64,7 @@ publicRoutes.get("/hall-of-fame", async (c) => {
 publicRoutes.get("/players/:slug", async (c) => {
   const result = await query(
     `select id, slug, name, nickname, position, jersey_number as "number", nationality,
-            captain, alternate_captain as "alternateCaptain", image_url as "imageUrl",
+            handedness, captain, alternate_captain as "alternateCaptain", image_url as "imageUrl",
             bio, sportsgamer_url as "sportsGamerUrl"
      from players where slug = $1`,
     [c.req.param("slug")]
@@ -82,7 +90,9 @@ publicRoutes.get("/players/:slug/stats", async (c) => {
       const mappedLiveStats = {
         source: "sportsgamer",
         skater: liveStats.skater.map(mapSkaterSeason),
-        goalie: liveStats.goalie.map(mapGoalieSeason)
+        skaterPlayoffs: liveStats.skaterPlayoffs.map(mapSkaterSeason),
+        goalie: liveStats.goalie.map(mapGoalieSeason),
+        goaliePlayoffs: liveStats.goaliePlayoffs.map(mapGoalieSeason)
       };
       await saveSportsGamerStatsSnapshot(player.rows[0].id, player.rows[0].sportsgamer_url, mappedLiveStats);
       await writeSportsGamerStatsCache(slug, mappedLiveStats);
@@ -107,6 +117,48 @@ publicRoutes.get("/league-standings/:leagueId", async (c) => {
 
   const standings = await cacheJson(`sportsgamer:league-standings:${leagueId}`, 300, () => fetchLeagueStandings(leagueId));
   return c.json(standings);
+});
+
+publicRoutes.get("/team-schedule/:leagueId/:teamId", async (c) => {
+  const leagueId = Number(c.req.param("leagueId"));
+  const teamId = Number(c.req.param("teamId"));
+  const status = c.req.query("status") ?? "all";
+
+  if (!Number.isInteger(leagueId) || leagueId <= 0 || !Number.isInteger(teamId) || teamId <= 0) {
+    return c.json({ error: "Invalid schedule id" }, 400);
+  }
+
+  if (status !== "all" && status !== "played" && status !== "unplayed") {
+    return c.json({ error: "Invalid schedule status" }, 400);
+  }
+
+  const schedule = await cacheJson(`sportsgamer:team-schedule:${leagueId}:${teamId}:${status}`, 300, () =>
+    fetchTeamSchedule(leagueId, teamId, status)
+  );
+  return c.json(schedule);
+});
+
+publicRoutes.get("/team-season-stats/:leagueId/:teamId", async (c) => {
+  const leagueId = Number(c.req.param("leagueId"));
+  const teamId = Number(c.req.param("teamId"));
+
+  if (!Number.isInteger(leagueId) || leagueId <= 0 || !Number.isInteger(teamId) || teamId <= 0) {
+    return c.json({ error: "Invalid team stats id" }, 400);
+  }
+
+  const stats = await cacheJson(`sportsgamer:team-season-stats:${leagueId}:${teamId}`, 300, () => fetchTeamSeasonStats(leagueId, teamId));
+  return c.json(stats);
+});
+
+publicRoutes.get("/league-playoffs/:leagueId", async (c) => {
+  const leagueId = Number(c.req.param("leagueId"));
+
+  if (!Number.isInteger(leagueId) || leagueId <= 0) {
+    return c.json({ error: "Invalid league id" }, 400);
+  }
+
+  const playoffs = await cacheJson(`sportsgamer:league-playoffs:${leagueId}`, 300, () => fetchLeaguePlayoffs(leagueId));
+  return c.json(playoffs);
 });
 
 async function readSportsGamerStatsCache(slug: string) {
@@ -168,7 +220,7 @@ async function loadStoredPlayerStats(playerId: string) {
      from goalie_season_stats where player_id = $1 order by league desc`,
     [playerId]
   );
-  return { source: "database", skater: skater.rows, goalie: goalie.rows };
+  return { source: "database", skater: skater.rows, skaterPlayoffs: [], goalie: goalie.rows, goaliePlayoffs: [] };
 }
 
 function mapSkaterSeason(row: SkaterSeason) {

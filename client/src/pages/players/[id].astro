@@ -5,22 +5,26 @@ import PlayerProfile from "@components/PlayerProfile.astro";
 import StatsTables from "@components/StatsTables.astro";
 import SiteLayout from "@layouts/SiteLayout.astro";
 import { serverApi } from "@lib/api";
-import type { GoalieStat, Player, SkaterStat } from "@lib/types";
+import type { GoalieStat, Player, PlayerStatsResponse, SkaterStat } from "@lib/types";
 
 const id = Astro.params.id ?? "";
 let player: Player | null = null;
 let skaterStats: SkaterStat[] = [];
+let skaterPlayoffStats: SkaterStat[] = [];
 let goalieStats: GoalieStat[] = [];
+let goaliePlayoffStats: GoalieStat[] = [];
 let error = "";
 
 try {
   const [playerResponse, statsResponse] = await Promise.all([
     serverApi<Player>(`/players/${id}`),
-    serverApi<{ skater: SkaterStat[]; goalie: GoalieStat[] }>(`/players/${id}/stats`)
+    serverApi<PlayerStatsResponse>(`/players/${id}/stats`)
   ]);
   player = playerResponse;
   skaterStats = statsResponse.skater;
+  skaterPlayoffStats = statsResponse.skaterPlayoffs ?? [];
   goalieStats = statsResponse.goalie;
+  goaliePlayoffStats = statsResponse.goaliePlayoffs ?? [];
 } catch (caught) {
   error = caught instanceof Error ? caught.message : "Could not load player.";
 }
@@ -31,7 +35,12 @@ try {
   {player && (
     <>
       <PlayerProfile player={player} />
-      <StatsTables skaterStats={skaterStats} goalieStats={goalieStats} />
+      <StatsTables
+        skaterStats={skaterStats}
+        skaterPlayoffStats={skaterPlayoffStats}
+        goalieStats={goalieStats}
+        goaliePlayoffStats={goaliePlayoffStats}
+      />
     </>
   )}
 </SiteLayout>

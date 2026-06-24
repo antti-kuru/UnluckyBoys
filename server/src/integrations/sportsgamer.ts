@@ -39,7 +39,9 @@ export type GoalieSeason = {
 
 export type PlayerCareerStats = {
   skater: SkaterSeason[];
+  skaterPlayoffs: SkaterSeason[];
   goalie: GoalieSeason[];
+  goaliePlayoffs: GoalieSeason[];
 };
 
 export type LeagueStandingTeam = {
@@ -79,6 +81,105 @@ export type LeagueStandings = {
   groups: LeagueStandingGroup[];
 };
 
+export type ScheduleTeam = {
+  id: number;
+  name: string;
+  abbreviation: string | null;
+  logoUrl: string | null;
+};
+
+export type TeamScheduleGame = {
+  id: number;
+  type: string | null;
+  date: string;
+  status: string | null;
+  played: boolean;
+  overtime: boolean;
+  homeTeam: ScheduleTeam;
+  awayTeam: ScheduleTeam;
+  goalsHome: number | null;
+  goalsAway: number | null;
+  sportsGamerUrl: string | null;
+};
+
+export type TeamSchedule = {
+  leagueId: number;
+  leagueName: string;
+  teamId: number;
+  status: "all" | "played" | "unplayed";
+  sourceUrl: string;
+  games: TeamScheduleGame[];
+};
+
+export type SeasonStatLine = {
+  gamesPlayed: number;
+  goals: number;
+  assists: number;
+  totalPoints: number;
+  penaltyMinutes: number;
+  plusMinus: number;
+};
+
+export type SeasonGoalieStatLine = {
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  overtimeLosses: number;
+  savePercentage: number | null;
+  goalsAgainstAverage: number | null;
+  shutouts: number;
+};
+
+export type TeamSeasonPlayerStats = {
+  playerName: string;
+  playerUrl: string | null;
+  regular: SeasonStatLine;
+  playoffs: SeasonStatLine;
+};
+
+export type TeamSeasonGoalieStats = {
+  playerName: string;
+  playerUrl: string | null;
+  regular: SeasonGoalieStatLine;
+  playoffs: SeasonGoalieStatLine;
+};
+
+export type TeamSeasonStats = {
+  leagueId: number;
+  leagueName: string;
+  teamId: number;
+  teamName: string;
+  sourceUrl: string;
+  players: TeamSeasonPlayerStats[];
+  goalies: TeamSeasonGoalieStats[];
+};
+
+export type PlayoffMatchup = {
+  id: number;
+  complete: boolean;
+  bracketKey: string | null;
+  homeWins: number;
+  awayWins: number;
+  homeTeam: ScheduleTeam;
+  awayTeam: ScheduleTeam;
+};
+
+export type PlayoffRound = {
+  id: number;
+  description: string;
+  bestOutOf: number | null;
+  winsNeeded: number | null;
+  relegation: boolean;
+  matchups: PlayoffMatchup[];
+};
+
+export type LeaguePlayoffs = {
+  leagueId: number;
+  leagueName: string;
+  sourceUrl: string;
+  rounds: PlayoffRound[];
+};
+
 const SPORTSGAMER_FETCH_ATTEMPTS = 3;
 
 function num(value: string | undefined) {
@@ -107,7 +208,9 @@ function decodeText(value: unknown) {
 export function parsePlayerCareerStats(html: string, teamFilter: string[] | null = teamNames) {
   const $ = cheerio.load(html);
   const skater: SkaterSeason[] = [];
+  const skaterPlayoffs: SkaterSeason[] = [];
   const goalie: GoalieSeason[] = [];
+  const goaliePlayoffs: GoalieSeason[] = [];
 
   $("table").each((_, table) => {
     const header = $(table).find("tr").first().text().replace(/\s+/g, " ");
@@ -116,8 +219,9 @@ export function parsePlayerCareerStats(html: string, teamFilter: string[] | null
       for (const row of rows) {
         const cells = rowCells(row, $);
         if (cells.length < 8 || (teamFilter && !teamFilter.includes(cells[1]))) continue;
-        skater.push({
-          league: cells[0],
+        const isPlayoffs = /\bplayoffs?\b/i.test(cells[0]);
+        const season: SkaterSeason = {
+          league: cleanPlayerLeagueName(cells[0]),
           team: cells[1],
           gp: num(cells[2]),
           goals: num(cells[3]),
@@ -132,15 +236,18 @@ export function parsePlayerCareerStats(html: string, teamFilter: string[] | null
           shootingPercentage: nullableNum(cells[12]),
           hits: num(cells[13]),
           faceoffWinPercentage: nullableNum(cells[14])
-        });
+        };
+        if (isPlayoffs) skaterPlayoffs.push(season);
+        else skater.push(season);
       }
     }
     if (header.includes("GP") && header.includes("W") && header.includes("SV%") && header.includes("GAA")) {
       for (const row of rows) {
         const cells = rowCells(row, $);
         if (cells.length < 11 || (teamFilter && !teamFilter.includes(cells[1]))) continue;
-        goalie.push({
-          league: cells[0],
+        const isPlayoffs = /\bplayoffs?\b/i.test(cells[0]);
+        const season: GoalieSeason = {
+          league: cleanPlayerLeagueName(cells[0]),
           team: cells[1],
           gp: num(cells[2]),
           wins: num(cells[3]),
@@ -152,12 +259,21 @@ export function parsePlayerCareerStats(html: string, teamFilter: string[] | null
           gaa: nullableNum(cells[9]),
           shutouts: num(cells[10]),
           pim: num(cells[11])
-        });
+        };
+        if (isPlayoffs) goaliePlayoffs.push(season);
+        else goalie.push(season);
       }
     }
   });
 
-  return { skater, goalie };
+  return { skater, skaterPlayoffs, goalie, goaliePlayoffs };
+}
+
+function cleanPlayerLeagueName(value: string) {
+  return value
+    .replace(/\s*-\s*(Regular season|Playoffs?)\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 type SportsGamerStandingTeam = {
@@ -197,6 +313,80 @@ type SportsGamerStandingsPage = {
       groups?: SportsGamerStandingGroup[];
     };
     groupNames?: string[];
+  };
+};
+
+type SportsGamerTeam = {
+  id?: number;
+  name?: string;
+  abbreviation?: string | null;
+  logo?: string | null;
+};
+
+type SportsGamerScheduleResult = {
+  status?: string | null;
+  overtime?: boolean;
+  goalsHome?: number | null;
+  goalsAway?: number | null;
+  url?: string | null;
+};
+
+type SportsGamerScheduleMatchup = {
+  id?: number;
+  type?: string | null;
+  date?: string;
+  stream?: string | null;
+  result?: SportsGamerScheduleResult | null;
+  match?: {
+    matchID?: number;
+    goalsHome?: number | null;
+    goalsAway?: number | null;
+    overtime?: boolean;
+  } | null;
+  homeTeam?: SportsGamerTeam;
+  awayTeam?: SportsGamerTeam;
+};
+
+type SportsGamerSchedulePage = {
+  props?: {
+    league?: {
+      id?: number;
+      name?: string;
+    };
+    teamId?: string | number;
+    filters?: {
+      status?: string;
+    };
+    matchups?: SportsGamerScheduleMatchup[];
+  };
+};
+
+type SportsGamerPlayoffMatchup = {
+  id?: number;
+  complete?: boolean;
+  bracketKey?: string | null;
+  homeWins?: number;
+  awayWins?: number;
+  homeTeam?: SportsGamerTeam;
+  awayTeam?: SportsGamerTeam;
+};
+
+type SportsGamerPlayoffRound = {
+  id?: number;
+  description?: string;
+  bestOutOf?: number | null;
+  winsNeeded?: number | null;
+  relegation?: boolean;
+  matchups?: SportsGamerPlayoffMatchup[];
+};
+
+type SportsGamerPlayoffsPage = {
+  props?: {
+    league?: {
+      id?: number;
+      name?: string;
+      playoffRounds?: SportsGamerPlayoffRound[];
+    };
   };
 };
 
@@ -251,6 +441,277 @@ export function parseLeagueStandingsPage(html: string, fallbackLeagueId: number,
   };
 }
 
+function emptyStatLine(): SeasonStatLine {
+  return {
+    gamesPlayed: 0,
+    goals: 0,
+    assists: 0,
+    totalPoints: 0,
+    penaltyMinutes: 0,
+    plusMinus: 0
+  };
+}
+
+function emptyGoalieStatLine(): SeasonGoalieStatLine {
+  return {
+    gamesPlayed: 0,
+    wins: 0,
+    losses: 0,
+    overtimeLosses: 0,
+    savePercentage: null,
+    goalsAgainstAverage: null,
+    shutouts: 0
+  };
+}
+
+function parseSeasonStatTable(table: unknown, $: cheerio.CheerioAPI) {
+  return $(table as never)
+    .find("tr")
+    .slice(1)
+    .toArray()
+    .map((row) => {
+      const cells = rowCells(row, $);
+      const nameCell = $(row).find("td, th").eq(1);
+      const link = nameCell.find("a[href*='/players/']").first();
+      const playerName = link.find("b").first().text().trim() || link.text().trim() || cells[1]?.split(",")[0]?.trim() || "Unknown player";
+      const playerHref = link.attr("href");
+
+      return {
+        playerName,
+        playerUrl: playerHref ? (playerHref.startsWith("http") ? playerHref : `${config.SPORTSGAMER_BASE_URL}${playerHref}`) : null,
+        statLine: {
+          gamesPlayed: num(cells[2]),
+          goals: num(cells[3]),
+          assists: num(cells[4]),
+          totalPoints: num(cells[5]),
+          plusMinus: num(cells[6]),
+          penaltyMinutes: num(cells[7])
+        }
+      };
+    })
+    .filter((row) => row.playerName !== "Unknown player" && row.statLine.gamesPlayed > 0);
+}
+
+function parseSeasonGoalieTable(table: unknown, $: cheerio.CheerioAPI) {
+  return $(table as never)
+    .find("tr")
+    .slice(1)
+    .toArray()
+    .map((row) => {
+      const cells = rowCells(row, $);
+      const nameCell = $(row).find("td, th").eq(1);
+      const link = nameCell.find("a[href*='/players/']").first();
+      const playerName = link.find("b").first().text().trim() || link.text().trim() || cells[1]?.split(",")[0]?.trim() || "Unknown player";
+      const playerHref = link.attr("href");
+
+      return {
+        playerName,
+        playerUrl: playerHref ? (playerHref.startsWith("http") ? playerHref : `${config.SPORTSGAMER_BASE_URL}${playerHref}`) : null,
+        statLine: {
+          gamesPlayed: num(cells[2]),
+          wins: num(cells[3]),
+          losses: num(cells[4]),
+          overtimeLosses: num(cells[5]),
+          savePercentage: nullableNum(cells[8]),
+          goalsAgainstAverage: nullableNum(cells[9]),
+          shutouts: num(cells[10])
+        }
+      };
+    })
+    .filter((row) => row.playerName !== "Unknown player" && row.statLine.gamesPlayed > 0);
+}
+
+export function parseTeamSeasonStatsPage(html: string, leagueId: number, teamId: number, sourceUrl: string): TeamSeasonStats {
+  const $ = cheerio.load(html);
+  const titleParts = $("title").text().trim().split(" - ");
+  const teamName = decodeText($(".profile-name").first().text().trim()) || titleParts[0] || "Unlucky Boys";
+  const leagueName = titleParts.length > 2 ? decodeText(titleParts.slice(1, -1).join(" - ")) : `League ${leagueId}`;
+  const skaterTables = $("table")
+    .toArray()
+    .filter((table) => {
+      const header = rowCells($(table).find("tr").first()[0], $);
+      return header.includes("GP") && header.includes("G") && header.includes("A") && header.includes("P") && header.includes("+/-");
+    })
+    .slice(0, 2);
+  const goalieTables = $("table")
+    .toArray()
+    .filter((table) => {
+      const header = rowCells($(table).find("tr").first()[0], $);
+      return header.includes("GP") && header.includes("W") && header.includes("OTL") && header.includes("SV%") && header.includes("GAA") && header.includes("SO");
+    })
+    .slice(0, 2);
+
+  const regular = skaterTables[0] ? parseSeasonStatTable(skaterTables[0], $) : [];
+  const playoffs = skaterTables[1] ? parseSeasonStatTable(skaterTables[1], $) : [];
+  const regularGoalies = goalieTables[0] ? parseSeasonGoalieTable(goalieTables[0], $) : [];
+  const playoffGoalies = goalieTables[1] ? parseSeasonGoalieTable(goalieTables[1], $) : [];
+  const playersByName = new Map<string, TeamSeasonPlayerStats>();
+  const goaliesByName = new Map<string, TeamSeasonGoalieStats>();
+
+  for (const row of regular) {
+    playersByName.set(row.playerName, {
+      playerName: row.playerName,
+      playerUrl: row.playerUrl,
+      regular: row.statLine,
+      playoffs: emptyStatLine()
+    });
+  }
+
+  for (const row of playoffs) {
+    const existing = playersByName.get(row.playerName);
+    if (existing) {
+      existing.playoffs = row.statLine;
+      existing.playerUrl = existing.playerUrl ?? row.playerUrl;
+    } else {
+      playersByName.set(row.playerName, {
+        playerName: row.playerName,
+        playerUrl: row.playerUrl,
+        regular: emptyStatLine(),
+        playoffs: row.statLine
+      });
+    }
+  }
+
+  for (const row of regularGoalies) {
+    goaliesByName.set(row.playerName, {
+      playerName: row.playerName,
+      playerUrl: row.playerUrl,
+      regular: row.statLine,
+      playoffs: emptyGoalieStatLine()
+    });
+  }
+
+  for (const row of playoffGoalies) {
+    const existing = goaliesByName.get(row.playerName);
+    if (existing) {
+      existing.playoffs = row.statLine;
+      existing.playerUrl = existing.playerUrl ?? row.playerUrl;
+    } else {
+      goaliesByName.set(row.playerName, {
+        playerName: row.playerName,
+        playerUrl: row.playerUrl,
+        regular: emptyGoalieStatLine(),
+        playoffs: row.statLine
+      });
+    }
+  }
+
+  return {
+    leagueId,
+    leagueName,
+    teamId,
+    teamName,
+    sourceUrl,
+    players: [...playersByName.values()].sort(
+      (a, b) =>
+        b.regular.totalPoints - a.regular.totalPoints ||
+        b.regular.goals - a.regular.goals ||
+        b.playoffs.totalPoints - a.playoffs.totalPoints ||
+        a.playerName.localeCompare(b.playerName)
+    ),
+    goalies: [...goaliesByName.values()].sort(
+      (a, b) =>
+        b.regular.gamesPlayed - a.regular.gamesPlayed ||
+        b.playoffs.gamesPlayed - a.playoffs.gamesPlayed ||
+        a.playerName.localeCompare(b.playerName)
+    )
+  };
+}
+
+function mapScheduleTeam(team: SportsGamerTeam | undefined): ScheduleTeam {
+  return {
+    id: team?.id ?? 0,
+    name: decodeText(team?.name) || "Unknown team",
+    abbreviation: team?.abbreviation ? decodeText(team.abbreviation) : null,
+    logoUrl: team?.logo ?? null
+  };
+}
+
+export function parseLeaguePlayoffsPage(html: string, fallbackLeagueId: number, sourceUrl: string): LeaguePlayoffs {
+  const $ = cheerio.load(html);
+  const pageData = $("[data-page]").attr("data-page");
+
+  if (!pageData) {
+    throw new Error("SportsGamer playoff data not found");
+  }
+
+  const parsed = JSON.parse(pageData) as SportsGamerPlayoffsPage;
+  const league = parsed.props?.league;
+
+  return {
+    leagueId: league?.id ?? fallbackLeagueId,
+    leagueName: decodeText(league?.name) || `League ${fallbackLeagueId}`,
+    sourceUrl,
+    rounds: (league?.playoffRounds ?? []).map((round) => ({
+      id: round.id ?? 0,
+      description: decodeText(round.description) || "Playoffs",
+      bestOutOf: round.bestOutOf ?? null,
+      winsNeeded: round.winsNeeded ?? null,
+      relegation: Boolean(round.relegation),
+      matchups: (round.matchups ?? []).map((matchup) => ({
+        id: matchup.id ?? 0,
+        complete: Boolean(matchup.complete),
+        bracketKey: matchup.bracketKey ?? null,
+        homeWins: num(String(matchup.homeWins ?? 0)),
+        awayWins: num(String(matchup.awayWins ?? 0)),
+        homeTeam: mapScheduleTeam(matchup.homeTeam),
+        awayTeam: mapScheduleTeam(matchup.awayTeam)
+      }))
+    }))
+  };
+}
+
+export function parseTeamSchedulePage(
+  html: string,
+  fallbackLeagueId: number,
+  fallbackTeamId: number,
+  fallbackStatus: "all" | "played" | "unplayed",
+  sourceUrl: string
+): TeamSchedule {
+  const $ = cheerio.load(html);
+  const pageData = $("[data-page]").attr("data-page");
+
+  if (!pageData) {
+    throw new Error("SportsGamer schedule data not found");
+  }
+
+  const parsed = JSON.parse(pageData) as SportsGamerSchedulePage;
+  const league = parsed.props?.league;
+  const teamId = Number(parsed.props?.teamId ?? fallbackTeamId);
+  const status = parsed.props?.filters?.status;
+
+  return {
+    leagueId: league?.id ?? fallbackLeagueId,
+    leagueName: decodeText(league?.name) || `League ${fallbackLeagueId}`,
+    teamId: Number.isFinite(teamId) ? teamId : fallbackTeamId,
+    status: status === "played" || status === "unplayed" || status === "all" ? status : fallbackStatus,
+    sourceUrl,
+    games: (parsed.props?.matchups ?? [])
+      .map((matchup) => {
+        const result = matchup.result ?? null;
+        const goalsHome = result?.goalsHome ?? matchup.match?.goalsHome ?? null;
+        const goalsAway = result?.goalsAway ?? matchup.match?.goalsAway ?? null;
+        const sportsGamerUrl = result?.url ?? (matchup.match?.matchID ? `${config.SPORTSGAMER_BASE_URL}/matchesnew/${matchup.match.matchID}` : null);
+
+        return {
+          id: matchup.id ?? matchup.match?.matchID ?? 0,
+          type: matchup.type ?? null,
+          date: matchup.date ?? "",
+          status: result?.status ?? null,
+          played: Boolean(result) || (goalsHome !== null && goalsAway !== null),
+          overtime: Boolean(result?.overtime ?? matchup.match?.overtime),
+          homeTeam: mapScheduleTeam(matchup.homeTeam),
+          awayTeam: mapScheduleTeam(matchup.awayTeam),
+          goalsHome,
+          goalsAway,
+          sportsGamerUrl
+        };
+      })
+      .filter((game) => game.date)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  };
+}
+
 export async function fetchPlayerCareerStats(sourceUrl: string, teamFilter: string[] | null = teamNames): Promise<PlayerCareerStats> {
   const url = sourceUrl.startsWith("http") ? sourceUrl : `${config.SPORTSGAMER_BASE_URL}${sourceUrl}`;
   const response = await fetchWithRetry(url);
@@ -271,6 +732,46 @@ export async function fetchLeagueStandings(leagueId: number): Promise<LeagueStan
 
   const html = await response.text();
   return parseLeagueStandingsPage(html, leagueId, sourceUrl);
+}
+
+export async function fetchTeamSeasonStats(leagueId: number, teamId: number): Promise<TeamSeasonStats> {
+  const sourceUrl = `${config.SPORTSGAMER_BASE_URL}/leagues/${leagueId}/teams/${teamId}`;
+  const response = await fetchWithRetry(sourceUrl);
+
+  if (!response.ok) {
+    throw new Error(`SportsGamer team stats request failed: ${response.status}`);
+  }
+
+  const html = await response.text();
+  return parseTeamSeasonStatsPage(html, leagueId, teamId, sourceUrl);
+}
+
+export async function fetchTeamSchedule(
+  leagueId: number,
+  teamId: number,
+  status: "all" | "played" | "unplayed" = "all"
+): Promise<TeamSchedule> {
+  const sourceUrl = `${config.SPORTSGAMER_BASE_URL}/leagues/${leagueId}/schedule/${teamId}?type=all&status=${status}`;
+  const response = await fetchWithRetry(sourceUrl);
+
+  if (!response.ok) {
+    throw new Error(`SportsGamer schedule request failed: ${response.status}`);
+  }
+
+  const html = await response.text();
+  return parseTeamSchedulePage(html, leagueId, teamId, status, sourceUrl);
+}
+
+export async function fetchLeaguePlayoffs(leagueId: number): Promise<LeaguePlayoffs> {
+  const sourceUrl = `${config.SPORTSGAMER_BASE_URL}/leagues/${leagueId}/playoffs`;
+  const response = await fetchWithRetry(sourceUrl);
+
+  if (!response.ok) {
+    throw new Error(`SportsGamer playoffs request failed: ${response.status}`);
+  }
+
+  const html = await response.text();
+  return parseLeaguePlayoffsPage(html, leagueId, sourceUrl);
 }
 
 async function fetchWithRetry(url: string) {

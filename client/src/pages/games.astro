@@ -1,0 +1,98 @@
+---
+import LeagueStandings from "@components/LeagueStandings.astro";
+import PlayoffTree from "@components/PlayoffTree.astro";
+import SeasonStatsTable from "@components/SeasonStatsTable.astro";
+import UpcomingGames from "@components/UpcomingGames.astro";
+import SiteLayout from "@layouts/SiteLayout.astro";
+import { serverApi } from "@lib/api";
+import type { LeaguePlayoffs, LeagueStandings as LeagueStandingsType, TeamSchedule, TeamSeasonStats } from "@lib/types";
+
+const teamId = 159;
+const seasons = [
+  { key: "ecl4-pro", label: "ECL 4 Pro", leagueId: 19 },
+  { key: "ecl5-pro", label: "ECL 5 Pro", leagueId: 24 },
+  { key: "ecl6-elite", label: "ECL 6 Elite", leagueId: 27 },
+  { key: "ecl7-elite", label: "ECL 7 Elite", leagueId: 35 },
+  { key: "ecl8-elite", label: "ECL 8 Elite", leagueId: 40 },
+  { key: "ecl9-elite", label: "ECL 9 Elite", leagueId: 55 },
+  { key: "ecl10-elite", label: "ECL 10 Elite", leagueId: 65 },
+  { key: "ecl11-elite", label: "ECL 11 Elite", leagueId: 94 },
+  { key: "ecl12-elite", label: "ECL 12 Elite", leagueId: 119 },
+  { key: "ecl22-winter-elite", label: "ECL '22 Winter Elite", leagueId: 170 },
+  { key: "ecl22-spring-elite", label: "ECL '22 Spring Elite", leagueId: 190 },
+  { key: "ecl23-winter-elite", label: "ECL '23 Winter Elite", leagueId: 250 },
+];
+
+const requestedSeason = Astro.url.searchParams.get("season");
+const selectedSeason = seasons.find((season) => season.key === requestedSeason) ?? seasons.at(-1)!;
+
+let stats: TeamSeasonStats | null = null;
+let schedule: TeamSchedule | null = null;
+let standings: LeagueStandingsType | null = null;
+let playoffs: LeaguePlayoffs | null = null;
+let error = "";
+
+try {
+  const [statsResponse, scheduleResponse, standingsResponse, playoffsResponse] = await Promise.all([
+    serverApi<TeamSeasonStats>(`/team-season-stats/${selectedSeason.leagueId}/${teamId}`),
+    serverApi<TeamSchedule>(`/team-schedule/${selectedSeason.leagueId}/${teamId}?status=all`),
+    serverApi<LeagueStandingsType>(`/league-standings/${selectedSeason.leagueId}`),
+    serverApi<LeaguePlayoffs>(`/league-playoffs/${selectedSeason.leagueId}`),
+  ]);
+  stats = statsResponse;
+  schedule = scheduleResponse;
+  standings = standingsResponse;
+  playoffs = playoffsResponse;
+} catch (caught) {
+  error =
+    caught instanceof Error
+      ? caught.message
+      : "Could not load season history.";
+}
+---
+
+<SiteLayout title="Season History | Unlucky Boys" bodyClass="content-tight-page">
+  <section class="page-head season-history-head">
+    <div>
+      <h1>Season History</h1>
+      <p class="muted">{selectedSeason.label}</p>
+    </div>
+    <label class="season-picker">
+      <span>Season</span>
+      <select data-season-picker>
+        {seasons.map((season) => (
+          <option value={season.key} selected={season.key === selectedSeason.key}>{season.label}</option>
+        ))}
+      </select>
+    </label>
+  </section>
+
+  {error && <section class="notice error">{error}</section>}
+
+  <section class="season-block">
+    <LeagueStandings standings={standings} />
+  </section>
+
+  <PlayoffTree playoffs={playoffs} teamId={teamId} />
+
+  {stats && <SeasonStatsTable players={stats.players} goalies={stats.goalies} />}
+
+  <section class="season-block">
+    <UpcomingGames
+      title="Games"
+      games={schedule?.games ?? []}
+      emptyText="No games found."
+      variant="full"
+    />
+  </section>
+
+  <script is:inline>
+    const picker = document.querySelector("[data-season-picker]");
+    picker?.addEventListener("change", () => {
+      if (!(picker instanceof HTMLSelectElement)) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set("season", picker.value);
+      window.location.href = url.toString();
+    });
+  </script>
+</SiteLayout>

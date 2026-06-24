@@ -4,18 +4,20 @@ import "../app.css";
 type Props = {
   title?: string;
   description?: string;
+  bodyClass?: string;
 };
 
 const {
   title = "Unlucky Boys",
   description = "Unlucky Boys esports NHL team hub",
+  bodyClass = "",
 } = Astro.props;
 
 const nav = [
-  { href: "/", label: "Home" },
   { href: "/news", label: "News" },
+  { href: "/games", label: "Season History" },
   { href: "/roster", label: "Roster" },
-  { href: "/history", label: "History" },
+  { href: "/history", label: "About us" },
   { href: "/hall-of-fame", label: "Hall of Fame" },
   { href: "/achievements-records", label: "Achievements & Records" },
 ];
@@ -25,6 +27,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 
 <!doctype html>
 <html lang="en">
+  er
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -32,7 +35,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     <link rel="icon" href="/brand/logo.png" />
     <title>{title}</title>
   </head>
-  <body>
+  <body class:list={[bodyClass]}>
     <header class="site-header">
       <div class="site-header-inner">
         <a href="/" class="brand">
@@ -75,9 +78,9 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
       <a
         href="https://twitter.com/UnluckyBoysNHL"
         target="_blank"
-        rel="noreferrer">Contaxt UB on X</a
+        rel="noreferrer">Contact UB on X</a
       >
-      <a class="admin-login-link" href="/admin">Admin login</a>
+      <a class="admin-login-link" href="/admin">Login</a>
     </footer>
     <script is:inline>
       const header = document.querySelector(".site-header");
