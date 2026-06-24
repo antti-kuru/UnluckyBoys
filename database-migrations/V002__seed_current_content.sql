@@ -1,7 +1,101 @@
+insert into news (slug, title, summary, body, cover_image_url, published_at) values
+  (
+    'unlucky-boys-site-launch',
+    'Unlucky Boys Site Launch',
+    'The new Unlucky Boys team hub is ready for news, roster updates, games, and records.',
+    'The new Unlucky Boys team hub is ready for news, roster updates, games, and records.',
+    '/brand/banner.png',
+    datetime('now', '-2 days')
+  ),
+  (
+    'roster-preparations-continue',
+    'Roster Preparations Continue',
+    'The team is preparing the active roster for upcoming NHL esports tournaments.',
+    'The team is preparing the active roster for upcoming NHL esports tournaments.',
+    '/brand/banner.png',
+    datetime('now', '-1 day')
+  ),
+  (
+    'records-system-ready',
+    'Records System Ready',
+    'All-time leaders will update from stored SportsGamer stat snapshots.',
+    'All-time leaders will update from stored SportsGamer stat snapshots.',
+    '/brand/banner.png',
+    datetime('now', '-6 hours')
+  );
+
+insert into achievements (title, body, display_order) values
+  ('ECL Legacy', 'Unlucky Boys has competed across multiple SportsGamer eras under the Unlucky Boys, Unlucky Boys HC, and YMCA Esports names.', 1),
+  ('Built for the Next Run', 'Use the admin dashboard to replace these starter paragraphs with the team history, tournament placements, and memorable playoff runs.', 2);
+
 insert into players (
-  slug, name, nickname, position, jersey_number, nationality, captain, alternate_captain,
+  slug, name, nickname, position, jersey_number, nationality, handedness, captain, alternate_captain,
   image_url, bio, active, roster_order, sportsgamer_url
 ) values
+  (
+    'antti-kuru',
+    'Antti Kuru',
+    'Anhel_Kuru',
+    'RD',
+    17,
+    'FIN',
+    'Right',
+    1,
+    0,
+    '/brand/kuru.png',
+    'Captain of Unlucky Boys and a right defenseman for Burgernation.',
+    1,
+    1,
+    'https://sportsgamer.gg/players/967'
+  ),
+  (
+    'joona-muona',
+    'Joona Muona',
+    'jm98II',
+    'LW',
+    29,
+    'FIN',
+    null,
+    0,
+    1,
+    '/brand/jm98.png',
+    'Alternate captain of Unlucky Boys and a left wing for Burgernation.',
+    1,
+    2,
+    'https://sportsgamer.gg/players/1335'
+  ),
+  (
+    'miikkael-henriksson',
+    'Miikkael Henriksson',
+    'MCH_98',
+    'LD',
+    15,
+    'FIN',
+    'Right',
+    0,
+    0,
+    '/brand/mch98.png',
+    'MCH made his UB debut with the team UB All Stars in FCL 2025 - 6v6 🇫🇮 - Regular season, playing in total 6 games for the burger jersey. Not everyone can play their first games for the club in the All Stars lineup.',
+    1,
+    3,
+    'https://sportsgamer.gg/players/1168'
+  ),
+  (
+    'william-sall',
+    'William Säll',
+    'sallee42',
+    'G',
+    35,
+    'SWE',
+    'Left',
+    0,
+    0,
+    '/brand/sallee42.png',
+    'Salle will continue the great legacy of Swedish goaltending for the Unlucky Boys. Salle is an extremely potential young goalie who made his Elite debut in ECL ''26: Spring - Elite with FOCUS.',
+    1,
+    4,
+    'https://sportsgamer.gg/players/12498'
+  ),
   (
     'ilmari-toyryla',
     'Ilmari Toyryla',
@@ -9,11 +103,12 @@ insert into players (
     'RD',
     63,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/iilmarii.png',
     'Originally the Unlucky Boys HC team was founded by Anhel_Kuru and iilmarii by playing 2s. Soon those games became boring and we found Jm98II as the third piece of the original three. It was quickly noticeable that iilmarii was the most skillful of us. After the first ECL season there was some little arguing about the quality of the UB team. iilmarii parted ways mutually and reached his potential elsewhere in JYP Esports. UB could charge a player development fee from the success of iilmarii''s career.',
-    false,
+    0,
     10,
     'https://sportsgamer.gg/players/1015'
   ),
@@ -24,11 +119,12 @@ insert into players (
     'RD',
     24,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/wengerii.png',
     'The first signing for Unlucky Boys HC. The acquisition process was extremely professional back in the day: we went into drop-in matches for a tryout to see who this Wengerii guy was and if he was any good. Wengerii started as RW and played most of his UB career as a forward. We saw too late the potential of him as a defenseman and enjoyed his game there only for a season, but what a season it was in ECL 10, reaching the ECL Elite playoffs and losing to hREDS in game 7 overtime. After that Wengerii''s career started to rise and the rest is history. UB should charge a player development fee from the success of Wengerii''s career.',
-    false,
+    0,
     11,
     'https://sportsgamer.gg/players/966'
   ),
@@ -39,11 +135,12 @@ insert into players (
     'LD',
     56,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/julius97.png',
     'Julius joined UB in IS Cup 4 before the start of ECL 9. He quickly became the backbone of UB''s defence and the simplicity of his game was always his strength. Julius always said what he thought, and it was often a good awakening for the rest of us if we played poorly. Julius97_ had astonishing chemistry with Jm98II, as they constantly knew what each other were doing on the left side.',
-    false,
+    0,
     12,
     'https://sportsgamer.gg/players/369'
   ),
@@ -54,11 +151,12 @@ insert into players (
     'LD',
     44,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/jugeh.png',
     'Jugeh_ was one of the first acquisitions of Unlucky Boys HC back in ECL 5. He was scouted as a solid two-way defenseman playing for White Trash. After long and tough negotiations, we managed to reach an agreement. Jugeh_ represented the burger jersey for a total of 6 ECL seasons.',
-    false,
+    0,
     13,
     'https://sportsgamer.gg/players/47'
   ),
@@ -69,11 +167,12 @@ insert into players (
     'RD',
     41,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/friilander.png',
     'Friilander was the Ari Vallin type of defenseman during his long spell in Unlucky Boys. The laugh he brought to the dressing room was unmatched.',
-    false,
+    0,
     14,
     'https://sportsgamer.gg/players/787'
   ),
@@ -84,11 +183,12 @@ insert into players (
     'RW',
     84,
     'GER',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/timasy.png',
     'Timasy joined UB in ECL 10. It was an interesting transfer as Timasy became the first non-Finnish outfield player of UB. There was a reason to take the risk, as we saw huge potential in him. The chemistry started clicking instantly, and in ECL 10 UB played its best offensive game thanks to Timasy. Timasy is an extremely humble and competitive person who has a special place in UB history.',
-    false,
+    0,
     15,
     'https://sportsgamer.gg/players/1468'
   ),
@@ -99,11 +199,12 @@ insert into players (
     'G',
     83,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/eissi83.png',
     'The original goalie of Unlucky Boys, the father Eissi83 brought experience to our young team back in the day. He was always a solid goalie for us, helping achieve the ECL 5 Pro finals. He was so good that for the following season Written In The Sky, an elite team, wanted to get him and they did.',
-    false,
+    0,
     16,
     'https://sportsgamer.gg/players/679'
   ),
@@ -114,11 +215,12 @@ insert into players (
     'G',
     7,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/viltzup.png',
     'Viltzup joined UB in ECL 7 from Lite team Club De Caballeros. This was proof of the quality of UB scouting, as Viltzup instantly became one of the best goalies in Elite. He had to stand on his head multiple times and we are always thankful for his commitment to the team. Highlight: ECL 10 playoffs.',
-    false,
+    0,
     17,
     'https://sportsgamer.gg/players/883'
   ),
@@ -129,11 +231,12 @@ insert into players (
     'G',
     59,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/benuh.png',
     'Looking back on UB history, we have somehow been able to sign tremendous goalies one after another. Benuh_ was no exception, as he instantly showed he belonged in Elite during his debut Elite season in the burger jersey, ECL 12. Calm as you like in net and especially good at saving breakaways. UB could charge a player development fee from the success of Benuh_''s career.',
-    false,
+    0,
     18,
     'https://sportsgamer.gg/players/27'
   ),
@@ -144,11 +247,12 @@ insert into players (
     'C',
     67,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/mozja.png',
     'Mozja came from Pro to replace Anhel_Kuru during his military service. The scouting report was that his mechanical skills were something UB/YMCA fans had never experienced before. Mozja grew a lot as a player during two seasons with YMCA Esports. After departing, he reached his peak elsewhere in Sawo Esports and Tunnel Vision and is currently still one of the smartest players out there for INCOACH. UB could charge a player development fee from the success of Mozjayh''s career.',
-    false,
+    0,
     19,
     'https://sportsgamer.gg/players/3485'
   ),
@@ -159,11 +263,12 @@ insert into players (
     'RW',
     41,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/sokkelo.png',
     'Sokkelo__, Mr. Positive, joined YMCA in ECL 22 Winter. The rumours of Sokkelo''s positivity were correct, as he always supported us even though we were losing 7-0. Sokkelo was a fan favourite, although some fans became annoyed by the tripping penalties in the offensive zone. Those were his speciality. The upside covered the penalties, as Sokkelo was always eager to score goals.',
-    false,
+    0,
     20,
     'https://sportsgamer.gg/players/2423'
   ),
@@ -174,31 +279,23 @@ insert into players (
     'LD',
     44,
     'FIN',
-    false,
-    false,
+    null,
+    0,
+    0,
     '/brand/jamoyy.png',
     'Jamoyy was scouted from Pro to join YMCA Esports for ECL 11. He was a skillful defenseman and you did not always know what he was going to do, both in a positive and negative way. Jamoyy brought joy into the party as an extremely fun dude from Kankaanpaa Pori, which is an accomplishment.',
-    false,
+    0,
     21,
     'https://sportsgamer.gg/players/3054'
-  )
-on conflict (slug) do update set
-  name = excluded.name,
-  nickname = excluded.nickname,
-  position = excluded.position,
-  jersey_number = excluded.jersey_number,
-  nationality = excluded.nationality,
-  captain = excluded.captain,
-  alternate_captain = excluded.alternate_captain,
-  image_url = excluded.image_url,
-  bio = excluded.bio,
-  active = excluded.active,
-  roster_order = excluded.roster_order,
-  sportsgamer_url = excluded.sportsgamer_url,
-  updated_at = now();
+  );
 
-update players
-set active = true,
-    roster_order = case slug when 'antti-kuru' then 1 when 'joona-muona' then 2 else roster_order end,
-    updated_at = now()
-where slug in ('antti-kuru', 'joona-muona');
+insert into player_season_stats (player_id, league, team_name, games_played, goals, assists, points, plus_minus, penalty_minutes)
+select id, 'Sample Season', 'Unlucky Boys', 10, 6, 8, 14, 5, 4
+from players where slug = 'antti-kuru';
+
+insert into goalie_season_stats (player_id, league, team_name, games_played, wins, losses, overtime_losses, saves, goals_against, save_percentage, goals_against_average, shutouts, penalty_minutes)
+select id, 'Sample Season', 'YMCA Esports', 12, 8, 3, 1, 140, 24, 85.37, 2.00, 2, 0
+from players where slug = 'william-sall';
+
+insert into upcoming_games (opponent, competition, starts_at, sportsgamer_url) values
+  ('Next Opponent', 'SportsGamer Tournament', datetime('now', '+7 days'), 'https://sportsgamer.gg');

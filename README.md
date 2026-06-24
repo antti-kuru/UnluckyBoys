@@ -5,10 +5,10 @@ Full-stack web application for the Unlucky Boys NHL esports team.
 ## Stack
 
 - Client: Astro, TypeScript
-- Server: Node.js, Hono, Postgres, Redis, bcrypt sessions, Zod validation
-- Data: SQL migrations with Flyway
-- Local platform: Docker Compose, Traefik, Postgres 17, Redis
-- Deployment: Kubernetes starter manifests and Cloud Run notes
+- Server: Node.js, Hono, SQLite, bcrypt sessions, Zod validation
+- Data: SQLite migrations applied automatically on server startup
+- Local platform: Docker Compose and Traefik
+- Deployment: single Docker image for Dokku-style VPS hosting
 
 ## Local Setup
 
@@ -33,6 +33,8 @@ http://localhost:8000
 ```
 
 Traefik dashboard is available at `http://localhost:8080`.
+
+SQLite data is stored locally in `sqlite-data/unlucky-boys.sqlite`. Uploaded news and player images are stored in `uploads/`.
 
 ## Pages
 
@@ -60,10 +62,22 @@ Add a `sportsgamer_url` to a player in admin, then use the SportsGamer sync butt
 ## Useful Commands
 
 ```sh
-docker compose run --rm database-migrations
 docker compose logs -f server
 docker compose logs -f client
+docker compose run --rm server npm run lint
+docker compose run --rm client npm run check
 ```
+
+## VPS Deployment
+
+The root `Dockerfile` builds one production image containing both the Hono API and Astro site. At runtime the API listens internally on `API_PORT` and Astro listens on `PORT`, which Dokku sets automatically.
+
+For a VPS/Dokku deployment, set the values from `project.env.example` as Dokku config vars and mount persistent storage for:
+
+- `/app/data` for the SQLite database
+- `/app/uploads` for uploaded images
+
+Back up both directories. SQLite is a good fit for this project size, but the database file must live on persistent disk instead of the container filesystem.
 
 ## Validation
 

@@ -1,0 +1,11 @@
+.git
+client/node_modules
+client/dist
+server/node_modules
+server/dist
+postgres-data
+lgtm-data
+sqlite-data
+server/data
+project.env
+*.log

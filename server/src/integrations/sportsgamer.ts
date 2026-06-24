@@ -1,8 +1,7 @@
 import * as cheerio from "cheerio";
-import type pg from "pg";
 import { config, teamNames } from "../config.js";
-import { withTransaction } from "../lib/db.js";
-import { redis } from "../lib/redis.js";
+import { query, withTransaction } from "../lib/db.js";
+import { deleteCacheKeys } from "../lib/cache.js";
 
 export type SkaterSeason = {
   league: string;
@@ -795,14 +794,14 @@ async function fetchWithRetry(url: string) {
   throw lastError instanceof Error ? lastError : new Error("SportsGamer request failed");
 }
 
-export async function syncPlayerFromSportsGamer(client: pg.PoolClient, playerId: string, sourceUrl: string) {
+export async function syncPlayerFromSportsGamer(playerId: string, sourceUrl: string) {
   const parsed = await fetchPlayerCareerStats(sourceUrl);
 
-  await client.query("delete from player_season_stats where player_id = $1", [playerId]);
-  await client.query("delete from goalie_season_stats where player_id = $1", [playerId]);
+  await query("delete from player_season_stats where player_id = $1", [playerId]);
+  await query("delete from goalie_season_stats where player_id = $1", [playerId]);
 
   for (const row of parsed.skater) {
-    await client.query(
+    await query(
       `insert into player_season_stats
        (player_id, league, team_name, games_played, goals, assists, points, plus_minus, penalty_minutes,
         powerplay_goals, shorthanded_goals, game_winning_goals, shots, shooting_percentage, hits, faceoff_win_percentage)
@@ -829,7 +828,7 @@ export async function syncPlayerFromSportsGamer(client: pg.PoolClient, playerId:
   }
 
   for (const row of parsed.goalie) {
-    await client.query(
+    await query(
       `insert into goalie_season_stats
        (player_id, league, team_name, games_played, wins, losses, overtime_losses, saves, goals_against, save_percentage, goals_against_average, shutouts, penalty_minutes)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
@@ -837,7 +836,7 @@ export async function syncPlayerFromSportsGamer(client: pg.PoolClient, playerId:
     );
   }
 
-  await client.query(
+  await query(
     `insert into sync_runs (source, status, message)
      values ('sportsgamer', 'success', $1)`,
     [`Synced ${parsed.skater.length} skater and ${parsed.goalie.length} goalie rows for ${playerId}`]
@@ -845,18 +844,14 @@ export async function syncPlayerFromSportsGamer(client: pg.PoolClient, playerId:
 }
 
 export async function syncAllSportsGamerPlayers() {
-  return withTransaction(async (client) => {
-    const players = await client.query<{ id: string; slug: string; sportsgamer_url: string | null }>(
+  return withTransaction(async () => {
+    const players = await query<{ id: string; slug: string; sportsgamer_url: string | null }>(
       "select id, slug, sportsgamer_url from players where sportsgamer_url is not null order by name"
     );
     for (const player of players.rows) {
-      await syncPlayerFromSportsGamer(client, player.id, player.sportsgamer_url!);
+      await syncPlayerFromSportsGamer(player.id, player.sportsgamer_url!);
     }
-    try {
-      await redis.del("records:all-time", ...players.rows.map((player) => `player-stats:${player.slug}`));
-    } catch {
-      // Redis is an optimization; a failed cache clear should not undo a completed database sync.
-    }
+    await deleteCacheKeys(["records:all-time", ...players.rows.map((player) => `player-stats:${player.slug}`)]);
     return { syncedPlayers: players.rowCount ?? 0 };
   });
 }

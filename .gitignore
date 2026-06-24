@@ -6,6 +6,8 @@ dist/
 coverage/
 postgres-data/
 lgtm-data/
+sqlite-data/
+server/data/
 .env
 project.env
 *.log

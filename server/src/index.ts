@@ -6,7 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import bcrypt from "bcryptjs";
 import { ZodError } from "zod";
 import { config } from "./config.js";
-import { query } from "./lib/db.js";
+import { migrateDatabase, query } from "./lib/db.js";
 import { publicRoutes } from "./routes/public.js";
 import { adminRoutes } from "./routes/admin.js";
 
@@ -42,10 +42,12 @@ async function ensureDefaultAdmin() {
   );
 }
 
+migrateDatabase();
+
 ensureDefaultAdmin()
   .then(() => {
-    serve({ fetch: app.fetch, port: config.PORT });
-    console.log(`Unlucky Boys API listening on ${config.PORT}`);
+    serve({ fetch: app.fetch, port: config.API_PORT });
+    console.log(`Unlucky Boys API listening on ${config.API_PORT}`);
   })
   .catch((error) => {
     console.error("Failed to start server", error);

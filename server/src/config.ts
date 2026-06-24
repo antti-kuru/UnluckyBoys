@@ -2,9 +2,9 @@ import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.string().default("development"),
-  PORT: z.coerce.number().default(8000),
-  DATABASE_URL: z.string().default("postgres://unlucky:unlucky@database:5432/unlucky_boys"),
-  REDIS_URL: z.string().default("redis://redis:6379"),
+  API_PORT: z.coerce.number().default(8000),
+  SQLITE_PATH: z.string().default("/app/data/unlucky-boys.sqlite"),
+  SQLITE_MIGRATIONS_DIR: z.string().default("/app/database-migrations"),
   SESSION_SECRET: z.string().min(32).default("change-this-session-secret-before-production"),
   CORS_ORIGIN: z.string().default("http://localhost:8000"),
   SPORTSGAMER_BASE_URL: z.string().url().default("https://sportsgamer.gg"),

@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-import { cacheJson } from "../lib/redis.js";
-import { redis } from "../lib/redis.js";
+import { cacheJson, readCacheJson, writeCacheJson } from "../lib/cache.js";
 import { query } from "../lib/db.js";
 import { notFound, parsePagination } from "../lib/http.js";
 import { teamNames } from "../config.js";
@@ -162,24 +161,12 @@ publicRoutes.get("/league-playoffs/:leagueId", async (c) => {
 });
 
 async function readSportsGamerStatsCache(slug: string) {
-  try {
-    if (redis.status === "wait") await redis.connect();
-    const cached = await redis.get(`player-stats:${slug}`);
-    if (!cached) return null;
-    const parsed = JSON.parse(cached) as { source?: string };
-    return parsed.source === "sportsgamer" ? parsed : null;
-  } catch {
-    return null;
-  }
+  const parsed = await readCacheJson<{ source?: string }>(`player-stats:${slug}`);
+  return parsed?.source === "sportsgamer" ? parsed : null;
 }
 
 async function writeSportsGamerStatsCache(slug: string, stats: unknown) {
-  try {
-    if (redis.status === "wait") await redis.connect();
-    await redis.set(`player-stats:${slug}`, JSON.stringify(stats), "EX", 300);
-  } catch {
-    // Stats still render without Redis; cache is only a speed-up.
-  }
+  await writeCacheJson(`player-stats:${slug}`, stats, 300);
 }
 
 async function saveSportsGamerStatsSnapshot(playerId: string, sourceUrl: string, stats: unknown) {
@@ -195,11 +182,11 @@ async function saveSportsGamerStatsSnapshot(playerId: string, sourceUrl: string,
 }
 
 async function loadSportsGamerStatsSnapshot(playerId: string) {
-  const result = await query<{ stats: unknown }>(
+  const result = await query<{ stats: string }>(
     "select stats from sportsgamer_player_stat_snapshots where player_id = $1",
     [playerId]
   );
-  return result.rows[0]?.stats ?? null;
+  return result.rows[0]?.stats ? JSON.parse(result.rows[0].stats) : null;
 }
 
 async function loadStoredPlayerStats(playerId: string) {
@@ -270,54 +257,83 @@ publicRoutes.get("/achievements", async (c) => {
 
 publicRoutes.get("/records", async (c) => {
   const data = await cacheJson("records:all-time", 300, async () => {
-    const leaders = await query(
-      `with snapshot_skater as (
-        select
-          p.name,
-          p.slug,
-          coalesce(sum((row.value->>'gamesPlayed')::integer), 0) as games_played,
-          coalesce(sum((row.value->>'goals')::integer), 0) as goals,
-          coalesce(sum((row.value->>'assists')::integer), 0) as assists,
-          coalesce(sum((row.value->>'points')::integer), 0) as points,
-          coalesce(sum((row.value->>'plusMinus')::integer), 0) as plus_minus,
-          coalesce(sum((row.value->>'penaltyMinutes')::integer), 0) as penalty_minutes,
-          coalesce(sum((row.value->>'shots')::integer), 0) as shots,
-          coalesce(sum((row.value->>'hits')::integer), 0) as hits
-        from players p
-        join sportsgamer_player_stat_snapshots s on s.player_id = p.id
-        cross join lateral jsonb_array_elements(s.stats->'skater') as row(value)
-        where row.value->>'teamName' = any($1::text[])
-        group by p.id
-      ), snapshot_goalie as (
-        select
-          p.name,
-          p.slug,
-          coalesce(sum((row.value->>'gamesPlayed')::integer), 0) as goalie_games_played,
-          coalesce(sum((row.value->>'wins')::integer), 0) as wins,
-          coalesce(sum((row.value->>'saves')::integer), 0) as saves,
-          coalesce(sum((row.value->>'shutouts')::integer), 0) as shutouts
-        from players p
-        join sportsgamer_player_stat_snapshots s on s.player_id = p.id
-        cross join lateral jsonb_array_elements(s.stats->'goalie') as row(value)
-        where row.value->>'teamName' = any($1::text[])
-        group by p.id
-      )
-      select
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', games_played) from snapshot_skater order by games_played desc, name asc limit 1) as "gamesPlayed",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', goals) from snapshot_skater order by goals desc, name asc limit 1) as "goals",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', assists) from snapshot_skater order by assists desc, name asc limit 1) as "assists",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', points) from snapshot_skater order by points desc, name asc limit 1) as "points",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', plus_minus) from snapshot_skater order by plus_minus desc, name asc limit 1) as "plusMinus",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', penalty_minutes) from snapshot_skater order by penalty_minutes desc, name asc limit 1) as "penaltyMinutes",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', shots) from snapshot_skater order by shots desc, name asc limit 1) as "shots",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', hits) from snapshot_skater order by hits desc, name asc limit 1) as "hits",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', goalie_games_played) from snapshot_goalie order by goalie_games_played desc, name asc limit 1) as "goalieGamesPlayed",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', wins) from snapshot_goalie order by wins desc, name asc limit 1) as "goalieWins",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', saves) from snapshot_goalie order by saves desc, name asc limit 1) as "saves",
-        (select jsonb_build_object('name', name, 'slug', slug, 'value', shutouts) from snapshot_goalie order by shutouts desc, name asc limit 1) as "shutouts"`,
-      [teamNames]
+    const snapshots = await query<{ name: string; slug: string; stats: string }>(
+      `select p.name, p.slug, s.stats
+       from players p
+       join sportsgamer_player_stat_snapshots s on s.player_id = p.id`
     );
-    return leaders.rows[0];
+
+    type Leader = { name: string; slug: string; value: number };
+    const leaders: Record<string, Leader | null> = {
+      gamesPlayed: null,
+      goals: null,
+      assists: null,
+      points: null,
+      plusMinus: null,
+      penaltyMinutes: null,
+      shots: null,
+      hits: null,
+      goalieGamesPlayed: null,
+      goalieWins: null,
+      saves: null,
+      shutouts: null
+    };
+
+    function setLeader(key: keyof typeof leaders, candidate: Leader) {
+      const current = leaders[key];
+      if (!current || candidate.value > current.value || (candidate.value === current.value && candidate.name.localeCompare(current.name) < 0)) {
+        leaders[key] = candidate;
+      }
+    }
+
+    for (const row of snapshots.rows) {
+      const stats = JSON.parse(row.stats) as {
+        skater?: Array<Record<string, unknown>>;
+        goalie?: Array<Record<string, unknown>>;
+      };
+      const skaterRows = (stats.skater ?? []).filter((stat) => teamNames.includes(String(stat.teamName ?? "")));
+      const goalieRows = (stats.goalie ?? []).filter((stat) => teamNames.includes(String(stat.teamName ?? "")));
+      const skaterTotals = {
+        gamesPlayed: 0,
+        goals: 0,
+        assists: 0,
+        points: 0,
+        plusMinus: 0,
+        penaltyMinutes: 0,
+        shots: 0,
+        hits: 0
+      };
+      const goalieTotals = {
+        goalieGamesPlayed: 0,
+        goalieWins: 0,
+        saves: 0,
+        shutouts: 0
+      };
+
+      for (const stat of skaterRows) {
+        skaterTotals.gamesPlayed += Number(stat.gamesPlayed ?? 0);
+        skaterTotals.goals += Number(stat.goals ?? 0);
+        skaterTotals.assists += Number(stat.assists ?? 0);
+        skaterTotals.points += Number(stat.points ?? 0);
+        skaterTotals.plusMinus += Number(stat.plusMinus ?? 0);
+        skaterTotals.penaltyMinutes += Number(stat.penaltyMinutes ?? 0);
+        skaterTotals.shots += Number(stat.shots ?? 0);
+        skaterTotals.hits += Number(stat.hits ?? 0);
+      }
+
+      for (const stat of goalieRows) {
+        goalieTotals.goalieGamesPlayed += Number(stat.gamesPlayed ?? 0);
+        goalieTotals.goalieWins += Number(stat.wins ?? 0);
+        goalieTotals.saves += Number(stat.saves ?? 0);
+        goalieTotals.shutouts += Number(stat.shutouts ?? 0);
+      }
+
+      for (const [key, value] of Object.entries({ ...skaterTotals, ...goalieTotals })) {
+        setLeader(key as keyof typeof leaders, { name: row.name, slug: row.slug, value });
+      }
+    }
+
+    return leaders;
   });
   return c.json(data);
 });
