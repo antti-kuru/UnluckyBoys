@@ -800,46 +800,74 @@ export async function syncPlayerFromSportsGamer(playerId: string, sourceUrl: str
   await query("delete from player_season_stats where player_id = $1", [playerId]);
   await query("delete from goalie_season_stats where player_id = $1", [playerId]);
 
-  for (const row of parsed.skater) {
-    await query(
-      `insert into player_season_stats
-       (player_id, league, team_name, games_played, goals, assists, points, plus_minus, penalty_minutes,
-        powerplay_goals, shorthanded_goals, game_winning_goals, shots, shooting_percentage, hits, faceoff_win_percentage)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-      [
-        playerId,
-        row.league,
-        row.team,
-        row.gp,
-        row.goals,
-        row.assists,
-        row.points,
-        row.plusMinus,
-        row.pim,
-        row.powerplayGoals,
-        row.shorthandedGoals,
-        row.gameWinningGoals,
-        row.shots,
-        row.shootingPercentage,
-        row.hits,
-        row.faceoffWinPercentage
-      ]
-    );
+  for (const [seasonType, rows] of [
+    ["regular", parsed.skater],
+    ["playoffs", parsed.skaterPlayoffs]
+  ] as const) {
+    for (const row of rows) {
+      await query(
+        `insert into player_season_stats
+         (player_id, league, team_name, season_type, games_played, goals, assists, points, plus_minus, penalty_minutes,
+          powerplay_goals, shorthanded_goals, game_winning_goals, shots, shooting_percentage, hits, faceoff_win_percentage)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+        [
+          playerId,
+          row.league,
+          row.team,
+          seasonType,
+          row.gp,
+          row.goals,
+          row.assists,
+          row.points,
+          row.plusMinus,
+          row.pim,
+          row.powerplayGoals,
+          row.shorthandedGoals,
+          row.gameWinningGoals,
+          row.shots,
+          row.shootingPercentage,
+          row.hits,
+          row.faceoffWinPercentage
+        ]
+      );
+    }
   }
 
-  for (const row of parsed.goalie) {
-    await query(
-      `insert into goalie_season_stats
-       (player_id, league, team_name, games_played, wins, losses, overtime_losses, saves, goals_against, save_percentage, goals_against_average, shutouts, penalty_minutes)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [playerId, row.league, row.team, row.gp, row.wins, row.losses, row.otl, row.saves, row.goalsAgainst, row.savePercentage, row.gaa, row.shutouts, row.pim]
-    );
+  for (const [seasonType, rows] of [
+    ["regular", parsed.goalie],
+    ["playoffs", parsed.goaliePlayoffs]
+  ] as const) {
+    for (const row of rows) {
+      await query(
+        `insert into goalie_season_stats
+         (player_id, league, team_name, season_type, games_played, wins, losses, overtime_losses, saves, goals_against, save_percentage, goals_against_average, shutouts, penalty_minutes)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [
+          playerId,
+          row.league,
+          row.team,
+          seasonType,
+          row.gp,
+          row.wins,
+          row.losses,
+          row.otl,
+          row.saves,
+          row.goalsAgainst,
+          row.savePercentage,
+          row.gaa,
+          row.shutouts,
+          row.pim
+        ]
+      );
+    }
   }
 
   await query(
     `insert into sync_runs (source, status, message)
      values ('sportsgamer', 'success', $1)`,
-    [`Synced ${parsed.skater.length} skater and ${parsed.goalie.length} goalie rows for ${playerId}`]
+    [
+      `Synced ${parsed.skater.length} regular skater, ${parsed.skaterPlayoffs.length} playoff skater, ${parsed.goalie.length} regular goalie and ${parsed.goaliePlayoffs.length} playoff goalie rows for ${playerId}`
+    ]
   );
 }
 

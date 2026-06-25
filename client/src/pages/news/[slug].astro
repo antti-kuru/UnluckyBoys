@@ -10,11 +10,50 @@ const slug = Astro.params.slug ?? "";
 let article: News | null = null;
 let error = "";
 
+function firstVideoUrl(text: string) {
+  return text.match(/https?:\/\/[^\s<>"']+/)?.[0] ?? null;
+}
+
+function videoPreview(url: string | null | undefined) {
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.replace(/^www\./, "");
+    let thumbnailUrl: string | null = null;
+    let label = "Watch video";
+
+    if (hostname === "youtu.be") {
+      const videoId = parsed.pathname.split("/").filter(Boolean)[0];
+      if (videoId) thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      label = "Watch on YouTube";
+    }
+
+    if (hostname === "youtube.com" || hostname === "m.youtube.com") {
+      const videoId =
+        parsed.searchParams.get("v") ??
+        parsed.pathname.match(/^\/(?:shorts|embed)\/([^/]+)/)?.[1] ??
+        null;
+      if (videoId) thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      label = "Watch on YouTube";
+    }
+
+    if (hostname === "twitch.tv") label = "Watch on Twitch";
+    if (hostname === "vimeo.com") label = "Watch on Vimeo";
+
+    return { url, thumbnailUrl, label, hostname };
+  } catch {
+    return null;
+  }
+}
+
 try {
   article = await serverApi<News>(`/news/${slug}`);
 } catch (caught) {
   error = caught instanceof Error ? caught.message : "Could not load article.";
 }
+
+const articleVideo = article ? videoPreview(article.videoUrl || firstVideoUrl(article.body)) : null;
 ---
 
 <SiteLayout title={article ? `${article.title} | Unlucky Boys` : "News | Unlucky Boys"}>
@@ -26,6 +65,17 @@ try {
         <time>{formatDate(article.publishedAt)}</time>
         <h1>{article.title}</h1>
         <p class="lead">{article.summary}</p>
+        {articleVideo && (
+          <a class="article-video" href={articleVideo.url} target="_blank" rel="noreferrer">
+            {articleVideo.thumbnailUrl ? (
+              <img src={articleVideo.thumbnailUrl} alt="" loading="lazy" />
+            ) : (
+              <span class="article-video-placeholder">{articleVideo.hostname}</span>
+            )}
+            <span class="article-video-play" aria-hidden="true"></span>
+            <strong>{articleVideo.label}</strong>
+          </a>
+        )}
         <p>{article.body}</p>
       </div>
     </article>

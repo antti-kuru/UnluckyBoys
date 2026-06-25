@@ -23,7 +23,10 @@ export async function serverApi<T>(path: string, init: RequestInit = {}): Promis
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(body.error ?? "Request failed");
+        const issue = body.issues?.[0];
+        const issuePath = Array.isArray(issue?.path) ? issue.path.join(".") : "";
+        const issueMessage = issue?.message ? `${issuePath ? `${issuePath}: ` : ""}${issue.message}` : "";
+        throw new Error(issueMessage || body.error || "Request failed");
       }
 
       return response.json() as Promise<T>;
@@ -47,7 +50,10 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(body.error ?? "Request failed");
+    const issue = body.issues?.[0];
+    const issuePath = Array.isArray(issue?.path) ? issue.path.join(".") : "";
+    const issueMessage = issue?.message ? `${issuePath ? `${issuePath}: ` : ""}${issue.message}` : "";
+    throw new Error(issueMessage || body.error || "Request failed");
   }
 
   return response.json() as Promise<T>;

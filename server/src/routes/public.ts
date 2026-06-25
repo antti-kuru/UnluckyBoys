@@ -15,10 +15,19 @@ import {
 
 export const publicRoutes = new Hono();
 
+function normalizePlayerRows<T extends { captain?: unknown; alternateCaptain?: unknown }>(rows: T[]) {
+  return rows.map((row) => ({
+    ...row,
+    captain: Boolean(row.captain),
+    alternateCaptain: Boolean(row.alternateCaptain)
+  }));
+}
+
 publicRoutes.get("/news", async (c) => {
   const { limit, offset } = parsePagination(c.req.query("limit"), c.req.query("offset"), { limit: 10, max: 50 });
   const result = await query(
-    `select slug, title, summary, body, cover_image_url as "coverImageUrl", published_at as "publishedAt"
+    `select slug, title, summary, body, cover_image_url as "coverImageUrl",
+            video_url as "videoUrl", published_at as "publishedAt"
      from news
      where published_at is not null
      order by published_at desc
@@ -30,7 +39,8 @@ publicRoutes.get("/news", async (c) => {
 
 publicRoutes.get("/news/:slug", async (c) => {
   const result = await query(
-    `select slug, title, summary, body, cover_image_url as "coverImageUrl", published_at as "publishedAt"
+    `select slug, title, summary, body, cover_image_url as "coverImageUrl",
+            video_url as "videoUrl", published_at as "publishedAt"
      from news where slug = $1 and published_at is not null`,
     [c.req.param("slug")]
   );
@@ -46,7 +56,7 @@ publicRoutes.get("/roster", async (c) => {
      where active = true
      order by roster_order asc, name asc`
   );
-  return c.json({ items: result.rows });
+  return c.json({ items: normalizePlayerRows(result.rows) });
 });
 
 publicRoutes.get("/hall-of-fame", async (c) => {
@@ -57,7 +67,7 @@ publicRoutes.get("/hall-of-fame", async (c) => {
      where active = false
      order by roster_order asc, name asc`
   );
-  return c.json({ items: result.rows });
+  return c.json({ items: normalizePlayerRows(result.rows) });
 });
 
 publicRoutes.get("/players/:slug", async (c) => {
@@ -69,7 +79,7 @@ publicRoutes.get("/players/:slug", async (c) => {
     [c.req.param("slug")]
   );
   if (!result.rows[0]) notFound("Player not found");
-  return c.json(result.rows[0]);
+  return c.json(normalizePlayerRows(result.rows)[0]);
 });
 
 publicRoutes.get("/players/:slug/stats", async (c) => {
@@ -190,24 +200,47 @@ async function loadSportsGamerStatsSnapshot(playerId: string) {
 }
 
 async function loadStoredPlayerStats(playerId: string) {
+  const skaterSelect = `select league, team_name as "teamName", games_played as "gamesPlayed", goals, assists, points,
+                              plus_minus as "plusMinus", penalty_minutes as "penaltyMinutes",
+                              powerplay_goals as "powerplayGoals", shorthanded_goals as "shorthandedGoals",
+                              game_winning_goals as "gameWinningGoals", shots, shooting_percentage as "shootingPercentage",
+                              hits, faceoff_win_percentage as "faceoffWinPercentage"
+                       from player_season_stats
+                       where player_id = $1 and season_type = $2
+                       order by league desc`;
+  const goalieSelect = `select league, team_name as "teamName", games_played as "gamesPlayed", wins, losses,
+                              overtime_losses as "overtimeLosses", saves, goals_against as "goalsAgainst",
+                              save_percentage as "savePercentage", goals_against_average as "goalsAgainstAverage",
+                              shutouts, penalty_minutes as "penaltyMinutes"
+                       from goalie_season_stats
+                       where player_id = $1 and season_type = $2
+                       order by league desc`;
   const skater = await query(
     `select league, team_name as "teamName", games_played as "gamesPlayed", goals, assists, points,
             plus_minus as "plusMinus", penalty_minutes as "penaltyMinutes",
             powerplay_goals as "powerplayGoals", shorthanded_goals as "shorthandedGoals",
             game_winning_goals as "gameWinningGoals", shots, shooting_percentage as "shootingPercentage",
             hits, faceoff_win_percentage as "faceoffWinPercentage"
-     from player_season_stats where player_id = $1 order by league desc`,
+     from player_season_stats where player_id = $1 and season_type = 'regular' order by league desc`,
     [playerId]
+  );
+  const skaterPlayoffs = await query(
+    skaterSelect,
+    [playerId, "playoffs"]
   );
   const goalie = await query(
     `select league, team_name as "teamName", games_played as "gamesPlayed", wins, losses,
             overtime_losses as "overtimeLosses", saves, goals_against as "goalsAgainst",
             save_percentage as "savePercentage", goals_against_average as "goalsAgainstAverage",
             shutouts, penalty_minutes as "penaltyMinutes"
-     from goalie_season_stats where player_id = $1 order by league desc`,
+     from goalie_season_stats where player_id = $1 and season_type = 'regular' order by league desc`,
     [playerId]
   );
-  return { source: "database", skater: skater.rows, skaterPlayoffs: [], goalie: goalie.rows, goaliePlayoffs: [] };
+  const goaliePlayoffs = await query(
+    goalieSelect,
+    [playerId, "playoffs"]
+  );
+  return { source: "database", skater: skater.rows, skaterPlayoffs: skaterPlayoffs.rows, goalie: goalie.rows, goaliePlayoffs: goaliePlayoffs.rows };
 }
 
 function mapSkaterSeason(row: SkaterSeason) {
@@ -257,10 +290,54 @@ publicRoutes.get("/achievements", async (c) => {
 
 publicRoutes.get("/records", async (c) => {
   const data = await cacheJson("records:all-time", 300, async () => {
-    const snapshots = await query<{ name: string; slug: string; stats: string }>(
-      `select p.name, p.slug, s.stats
+    const teamNamePlaceholders = teamNames.map((_, index) => `$${index + 1}`).join(", ");
+    const skaterTotals = await query<{
+      name: string;
+      slug: string;
+      gamesPlayed: number;
+      goals: number;
+      assists: number;
+      points: number;
+      plusMinus: number;
+      penaltyMinutes: number;
+      shots: number;
+      hits: number;
+    }>(
+      `select p.name,
+              p.slug,
+              coalesce(sum(s.games_played), 0) as "gamesPlayed",
+              coalesce(sum(s.goals), 0) as goals,
+              coalesce(sum(s.assists), 0) as assists,
+              coalesce(sum(s.points), 0) as points,
+              coalesce(sum(s.plus_minus), 0) as "plusMinus",
+              coalesce(sum(s.penalty_minutes), 0) as "penaltyMinutes",
+              coalesce(sum(s.shots), 0) as shots,
+              coalesce(sum(s.hits), 0) as hits
        from players p
-       join sportsgamer_player_stat_snapshots s on s.player_id = p.id`
+       join player_season_stats s on s.player_id = p.id
+       where s.team_name in (${teamNamePlaceholders})
+       group by p.id, p.name, p.slug`,
+      teamNames
+    );
+    const goalieTotals = await query<{
+      name: string;
+      slug: string;
+      goalieGamesPlayed: number;
+      goalieWins: number;
+      saves: number;
+      shutouts: number;
+    }>(
+      `select p.name,
+              p.slug,
+              coalesce(sum(g.games_played), 0) as "goalieGamesPlayed",
+              coalesce(sum(g.wins), 0) as "goalieWins",
+              coalesce(sum(g.saves), 0) as saves,
+              coalesce(sum(g.shutouts), 0) as shutouts
+       from players p
+       join goalie_season_stats g on g.player_id = p.id
+       where g.team_name in (${teamNamePlaceholders})
+       group by p.id, p.name, p.slug`,
+      teamNames
     );
 
     type Leader = { name: string; slug: string; value: number };
@@ -286,49 +363,28 @@ publicRoutes.get("/records", async (c) => {
       }
     }
 
-    for (const row of snapshots.rows) {
-      const stats = JSON.parse(row.stats) as {
-        skater?: Array<Record<string, unknown>>;
-        goalie?: Array<Record<string, unknown>>;
-      };
-      const skaterRows = (stats.skater ?? []).filter((stat) => teamNames.includes(String(stat.teamName ?? "")));
-      const goalieRows = (stats.goalie ?? []).filter((stat) => teamNames.includes(String(stat.teamName ?? "")));
-      const skaterTotals = {
-        gamesPlayed: 0,
-        goals: 0,
-        assists: 0,
-        points: 0,
-        plusMinus: 0,
-        penaltyMinutes: 0,
-        shots: 0,
-        hits: 0
-      };
-      const goalieTotals = {
-        goalieGamesPlayed: 0,
-        goalieWins: 0,
-        saves: 0,
-        shutouts: 0
-      };
-
-      for (const stat of skaterRows) {
-        skaterTotals.gamesPlayed += Number(stat.gamesPlayed ?? 0);
-        skaterTotals.goals += Number(stat.goals ?? 0);
-        skaterTotals.assists += Number(stat.assists ?? 0);
-        skaterTotals.points += Number(stat.points ?? 0);
-        skaterTotals.plusMinus += Number(stat.plusMinus ?? 0);
-        skaterTotals.penaltyMinutes += Number(stat.penaltyMinutes ?? 0);
-        skaterTotals.shots += Number(stat.shots ?? 0);
-        skaterTotals.hits += Number(stat.hits ?? 0);
+    for (const row of skaterTotals.rows) {
+      for (const [key, value] of Object.entries({
+        gamesPlayed: row.gamesPlayed,
+        goals: row.goals,
+        assists: row.assists,
+        points: row.points,
+        plusMinus: row.plusMinus,
+        penaltyMinutes: row.penaltyMinutes,
+        shots: row.shots,
+        hits: row.hits
+      })) {
+        setLeader(key as keyof typeof leaders, { name: row.name, slug: row.slug, value: Number(value) });
       }
+    }
 
-      for (const stat of goalieRows) {
-        goalieTotals.goalieGamesPlayed += Number(stat.gamesPlayed ?? 0);
-        goalieTotals.goalieWins += Number(stat.wins ?? 0);
-        goalieTotals.saves += Number(stat.saves ?? 0);
-        goalieTotals.shutouts += Number(stat.shutouts ?? 0);
-      }
-
-      for (const [key, value] of Object.entries({ ...skaterTotals, ...goalieTotals })) {
+    for (const row of goalieTotals.rows) {
+      for (const [key, value] of Object.entries({
+        goalieGamesPlayed: row.goalieGamesPlayed,
+        goalieWins: row.goalieWins,
+        saves: row.saves,
+        shutouts: row.shutouts
+      })) {
         setLeader(key as keyof typeof leaders, { name: row.name, slug: row.slug, value });
       }
     }

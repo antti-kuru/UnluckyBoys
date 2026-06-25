@@ -4,6 +4,7 @@ export type News = {
   summary: string;
   body: string;
   coverImageUrl?: string | null;
+  videoUrl?: string | null;
   publishedAt: string;
 };
 

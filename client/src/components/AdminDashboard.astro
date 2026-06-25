@@ -1,15 +1,9 @@
 <section class="page-head">
   <h1>Admin</h1>
-  <button class="icon-button" aria-label="Log out" type="button" data-logout hidden>Out</button>
+  <button class="command secondary-command" type="button" data-logout hidden>Logout</button>
 </section>
 
 <section class="notice" data-admin-message hidden></section>
-
-<form class="admin-form compact" data-login-form>
-  <label>Email<input name="email" type="email" value="admin@unluckyboys.local" /></label>
-  <label>Password<input name="password" type="password" /></label>
-  <button class="command" type="submit">Log in</button>
-</form>
 
 <section data-admin-panel hidden>
   <p class="muted" data-admin-user></p>
@@ -27,6 +21,7 @@
         <img data-image-preview src="/brand/banner.png" alt="News image preview" />
       </div>
       <input name="coverImageUrl" type="hidden" value="/brand/banner.png" />
+      <label>Video URL<input name="videoUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." /></label>
       <button class="command" type="submit">Save news</button>
     </form>
     <form class="admin-form" data-player-form>
@@ -36,8 +31,14 @@
       <label>Position<input name="position" value="C" /></label>
       <label>Number<input name="number" type="number" value="0" /></label>
       <label>Nationality<input name="nationality" value="FIN" /></label>
-      <label class="checkbox-label"><input name="captain" type="checkbox" />Captain</label>
-      <label class="checkbox-label"><input name="alternateCaptain" type="checkbox" />Alternate captain</label>
+      <label>
+        Captaincy
+        <select name="captainRole">
+          <option value="none">None</option>
+          <option value="captain">Captain</option>
+          <option value="alternate">Alternate captain</option>
+        </select>
+      </label>
       <label>Player image</label>
       <div class="image-dropzone" data-image-dropzone data-upload-kind="players" tabindex="0" role="button">
         <input data-image-input type="file" accept="image/jpeg,image/png,image/webp,image/gif" />
@@ -48,7 +49,7 @@
       <input name="imageUrl" type="hidden" />
       <label>SportsGamer URL<input name="sportsGamerUrl" /></label>
       <label>Bio<textarea name="bio"></textarea></label>
-      <input name="active" type="hidden" value="true" />
+      <label class="checkbox-label"><input name="active" type="checkbox" checked />Active roster</label>
       <input name="rosterOrder" type="hidden" value="10" />
       <button class="command" type="submit">Save player</button>
     </form>
@@ -76,7 +77,6 @@
 
   type Admin = { email: string; displayName: string };
 
-  const loginForm = document.querySelector<HTMLFormElement>("[data-login-form]");
   const adminPanel = document.querySelector<HTMLElement>("[data-admin-panel]");
   const adminUser = document.querySelector<HTMLElement>("[data-admin-user]");
   const message = document.querySelector<HTMLElement>("[data-admin-message]");
@@ -100,7 +100,7 @@
     const payload: Record<string, FormDataEntryValue | boolean | number> = {};
 
     data.forEach((value, key) => {
-      payload[key] = value;
+      payload[key] = typeof value === "string" ? value.trim() : value;
     });
 
     form.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((input) => {
@@ -111,12 +111,22 @@
       payload[input.name] = Number(input.value);
     });
 
-    if ("active" in payload) payload.active = payload.active === "true";
+    if (payload.captainRole === "captain") {
+      payload.captain = true;
+      payload.alternateCaptain = false;
+    } else if (payload.captainRole === "alternate") {
+      payload.captain = false;
+      payload.alternateCaptain = true;
+    } else if ("captainRole" in payload) {
+      payload.captain = false;
+      payload.alternateCaptain = false;
+    }
+    delete payload.captainRole;
+
     return payload;
   }
 
   function setAuthenticated(admin: Admin | null) {
-    if (loginForm) loginForm.hidden = Boolean(admin);
     if (adminPanel) adminPanel.hidden = !admin;
     if (logoutButton) logoutButton.hidden = !admin;
     if (adminUser) adminUser.textContent = admin ? `Signed in as ${admin.displayName}` : "";
@@ -191,71 +201,81 @@
     const me = await api<{ admin: Admin | null }>("/admin/auth/me");
     setAuthenticated(me.admin);
 
-    if (!me.admin) return;
+    if (!me.admin) {
+      window.location.replace("/login");
+      return;
+    }
 
-    const [newsResponse, achievementResponse, rosterResponse] = await Promise.all([
+    const [newsResponse, achievementResponse, rosterResponse, hallOfFameResponse] = await Promise.all([
       api<{ items: News[] }>("/news?limit=50&offset=0"),
       api<{ items: Achievement[] }>("/achievements"),
-      api<{ items: Player[] }>("/roster")
+      api<{ items: Player[] }>("/roster"),
+      api<{ items: Player[] }>("/hall-of-fame")
     ]);
 
     if (!manageList) return;
     manageList.innerHTML = [
       ...newsResponse.items.map((item) => manageRow(item.title, "news", item.slug)),
       ...rosterResponse.items.map((item) => manageRow(item.name, "players", item.slug)),
+      ...hallOfFameResponse.items.map((item) => manageRow(`${item.name} (Hall of Fame)`, "players", item.slug)),
       ...achievementResponse.items.map((item) => manageRow(item.title, "achievements", item.id))
     ].join("");
   }
 
-  loginForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    try {
-      await postJson("/admin/auth/login", formPayload(loginForm));
-      await loadAdmin();
-    } catch (caught) {
-      showMessage(caught instanceof Error ? caught.message : "Login failed.", true);
-    }
-  });
-
   logoutButton?.addEventListener("click", async () => {
     await postJson("/admin/auth/logout", {});
     setAuthenticated(null);
+    window.location.replace("/login");
   });
 
   newsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await postJson("/admin/news", formPayload(newsForm));
-    newsForm.reset();
-    newsForm.coverImageUrl.value = "/brand/banner.png";
-    const preview = newsForm.querySelector<HTMLImageElement>("[data-image-preview]");
-    if (preview) preview.src = "/brand/banner.png";
-    showMessage("News saved.");
-    await loadAdmin();
+    try {
+      await postJson("/admin/news", formPayload(newsForm));
+      newsForm.reset();
+      newsForm.coverImageUrl.value = "/brand/banner.png";
+      const preview = newsForm.querySelector<HTMLImageElement>("[data-image-preview]");
+      if (preview) preview.src = "/brand/banner.png";
+      showMessage("News saved.");
+      await loadAdmin();
+    } catch (caught) {
+      showMessage(caught instanceof Error ? caught.message : "News save failed.", true);
+    }
   });
 
   playerForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await postJson("/admin/players", formPayload(playerForm));
-    playerForm.reset();
-    playerForm.position.value = "C";
-    playerForm.number.value = "0";
-    playerForm.nationality.value = "FIN";
-    const preview = playerForm.querySelector<HTMLImageElement>("[data-image-preview]");
-    if (preview) {
-      preview.removeAttribute("src");
-      preview.hidden = true;
+    try {
+      await postJson("/admin/players", formPayload(playerForm));
+      playerForm.reset();
+      playerForm.position.value = "C";
+      playerForm.number.value = "0";
+      playerForm.nationality.value = "FIN";
+      const activeInput = playerForm.elements.namedItem("active");
+      if (activeInput instanceof HTMLInputElement) activeInput.checked = true;
+      const preview = playerForm.querySelector<HTMLImageElement>("[data-image-preview]");
+      if (preview) {
+        preview.removeAttribute("src");
+        preview.hidden = true;
+      }
+      showMessage("Player saved.");
+      await loadAdmin();
+    } catch (caught) {
+      showMessage(caught instanceof Error ? caught.message : "Player save failed.", true);
     }
-    showMessage("Player saved.");
-    await loadAdmin();
   });
 
   achievementForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await postJson("/admin/achievements", formPayload(achievementForm));
-    achievementForm.reset();
-    achievementForm.displayOrder.value = "10";
-    showMessage("Achievement saved.");
-    await loadAdmin();
+    try {
+      await postJson("/admin/achievements", formPayload(achievementForm));
+      achievementForm.reset();
+      achievementForm.displayOrder.value = "10";
+      showMessage("Achievement saved.");
+      await loadAdmin();
+    } catch (caught) {
+      showMessage(caught instanceof Error ? caught.message : "Achievement save failed.", true);
+    }
   });
 
   syncButton?.addEventListener("click", async () => {

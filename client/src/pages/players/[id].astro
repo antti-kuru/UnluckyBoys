@@ -30,7 +30,7 @@ try {
 }
 ---
 
-<SiteLayout title={player ? `${player.name} | Unlucky Boys` : "Player | Unlucky Boys"}>
+<SiteLayout title={player ? `${player.name} | Unlucky Boys` : "Player | Unlucky Boys"} bodyClass="content-tight-page">
   {error && <section class="notice error">{error}</section>}
   {player && (
     <>

@@ -66,6 +66,14 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
               </a>
             ))
           }
+          <a
+            class:list={[{ active: currentPath === "/admin" }]}
+            href="/admin"
+            data-admin-nav
+            hidden
+          >
+            Admin
+          </a>
         </nav>
       </div>
     </header>
@@ -79,7 +87,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
         target="_blank"
         rel="noreferrer">Contact UB on X</a
       >
-      <a class="admin-login-link" href="/admin">Login</a>
+      <a class="admin-login-link" href="/login">Login</a>
     </footer>
     <script is:inline>
       const header = document.querySelector(".site-header");
@@ -111,6 +119,18 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
         .matchMedia("(min-width: 821px)")
         .addEventListener("change", (event) => {
           if (event.matches) setMenuOpen(false);
+        });
+
+      const adminNavLink = document.querySelector("[data-admin-nav]");
+      fetch("/api/admin/auth/me", { credentials: "include" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((result) => {
+          if (result?.admin && adminNavLink instanceof HTMLElement) {
+            adminNavLink.hidden = false;
+          }
+        })
+        .catch(() => {
+          // Public navigation stays unchanged if the session check fails.
         });
     </script>
   </body>

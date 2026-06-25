@@ -7,6 +7,8 @@ type Props = {
 };
 
 const { player } = Astro.props;
+const isCaptain = Boolean(player.captain);
+const isAlternateCaptain = Boolean(player.alternateCaptain);
 ---
 
 <a class="player-card" href={`/players/${player.slug}`}>
@@ -18,7 +20,7 @@ const { player } = Astro.props;
   <span class="card-meta">#{player.number} · {player.position} · {player.nationality || "FIN"}</span>
   <strong>{player.name}</strong>
   {player.nickname && <em>{player.nickname}</em>}
-  {(player.captain || player.alternateCaptain) && (
-    <small class="captain-badge">{player.captain ? "C" : "A"}</small>
+  {(isCaptain || isAlternateCaptain) && (
+    <small class="captain-badge">{isCaptain ? "C" : "A"}</small>
   )}
 </a>

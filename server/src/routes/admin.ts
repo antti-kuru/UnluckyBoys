@@ -6,6 +6,7 @@ import path from "node:path";
 import { z } from "zod";
 import { config } from "../config.js";
 import { query } from "../lib/db.js";
+import { deleteCacheKeys } from "../lib/cache.js";
 import { badRequest } from "../lib/http.js";
 import { slugify } from "../lib/slug.js";
 import { createSession, destroySession, getAdminFromSession, requireAdmin } from "../middleware/session.js";
@@ -13,18 +14,47 @@ import { syncAllSportsGamerPlayers } from "../integrations/sportsgamer.js";
 
 export const adminRoutes = new Hono();
 
+function cleanString(value: unknown) {
+  return typeof value === "string" ? value.trim() : value;
+}
+
+function cleanUrl(value: unknown) {
+  const cleaned = cleanString(value);
+  if (cleaned === "") return undefined;
+  if (typeof cleaned !== "string") return cleaned;
+  return /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
+}
+
+function booleanValue(value: unknown) {
+  if (value === "true" || value === "on" || value === "1") return true;
+  if (value === "false" || value === "off" || value === "0" || value === "" || value === undefined) return false;
+  return value;
+}
+
+const requiredString = z.preprocess(cleanString, z.string().min(1));
+const optionalUrl = z.preprocess(cleanUrl, z.string().url().optional());
+const optionalString = z.preprocess((value) => {
+  const cleaned = cleanString(value);
+  return cleaned === "" ? undefined : cleaned;
+}, z.string().optional());
+const optionalText = z.preprocess((value) => {
+  const cleaned = cleanString(value);
+  return cleaned === "" ? undefined : cleaned;
+}, z.string().default(""));
+
 const newsSchema = z.object({
-  title: z.string().min(2),
-  summary: z.string().min(2),
-  body: z.string().min(2),
-  coverImageUrl: z.string().min(1),
+  title: requiredString,
+  summary: requiredString,
+  body: requiredString,
+  coverImageUrl: requiredString,
+  videoUrl: optionalUrl,
   publishedAt: z.string().datetime().optional().nullable()
 });
 
 const achievementSchema = z.object({
   title: z.string().min(2),
   body: z.string().min(2),
-  displayOrder: z.number().int().min(0).default(0)
+  displayOrder: z.coerce.number().int().min(0).default(0)
 });
 
 const playerImageSchema = z.union([
@@ -33,18 +63,21 @@ const playerImageSchema = z.union([
 ]);
 
 const playerSchema = z.object({
-  name: z.string().min(2),
-  nickname: z.string().optional().default(""),
-  position: z.string().min(1),
-  number: z.number().int().min(0).max(99),
-  nationality: z.string().optional().default(""),
-  captain: z.boolean().default(false),
-  alternateCaptain: z.boolean().default(false),
-  imageUrl: playerImageSchema.optional().or(z.literal("")),
-  bio: z.string().optional().default(""),
-  active: z.boolean().default(true),
-  rosterOrder: z.number().int().min(0).default(0),
-  sportsGamerUrl: z.string().url().optional().or(z.literal(""))
+  name: z.preprocess(cleanString, z.string().min(2)),
+  nickname: optionalString.default(""),
+  position: requiredString,
+  number: z.coerce.number().int().min(0).max(99),
+  nationality: optionalString.default(""),
+  captain: z.preprocess(booleanValue, z.boolean().default(false)),
+  alternateCaptain: z.preprocess(booleanValue, z.boolean().default(false)),
+  imageUrl: z.preprocess((value) => {
+    const cleaned = cleanString(value);
+    return cleaned === "" ? undefined : cleaned;
+  }, playerImageSchema.optional()),
+  bio: optionalText,
+  active: z.preprocess(booleanValue, z.boolean().default(true)),
+  rosterOrder: z.coerce.number().int().min(0).default(0),
+  sportsGamerUrl: optionalUrl
 });
 
 adminRoutes.post("/auth/login", async (c) => {
@@ -107,10 +140,18 @@ adminRoutes.post("/news", async (c) => {
   const payload = newsSchema.parse(await c.req.json());
   const slug = slugify(payload.title);
   const result = await query(
-    `insert into news (slug, title, summary, body, cover_image_url, published_at)
-     values ($1,$2,$3,$4,$5,$6)
+    `insert into news (slug, title, summary, body, cover_image_url, video_url, published_at)
+     values ($1,$2,$3,$4,$5,$6,$7)
      returning *`,
-    [slug, payload.title, payload.summary, payload.body, payload.coverImageUrl, payload.publishedAt ?? new Date().toISOString()]
+    [
+      slug,
+      payload.title,
+      payload.summary,
+      payload.body,
+      payload.coverImageUrl,
+      payload.videoUrl || null,
+      payload.publishedAt ?? new Date().toISOString()
+    ]
   );
   return c.json(result.rows[0], 201);
 });
@@ -119,9 +160,17 @@ adminRoutes.put("/news/:slug", async (c) => {
   const payload = newsSchema.parse(await c.req.json());
   const result = await query(
     `update news
-     set title=$2, summary=$3, body=$4, cover_image_url=$5, published_at=$6, updated_at=now()
+     set title=$2, summary=$3, body=$4, cover_image_url=$5, video_url=$6, published_at=$7, updated_at=now()
      where slug=$1 returning *`,
-    [c.req.param("slug"), payload.title, payload.summary, payload.body, payload.coverImageUrl, payload.publishedAt]
+    [
+      c.req.param("slug"),
+      payload.title,
+      payload.summary,
+      payload.body,
+      payload.coverImageUrl,
+      payload.videoUrl || null,
+      payload.publishedAt
+    ]
   );
   if (!result.rows[0]) badRequest("News article not found");
   return c.json(result.rows[0]);
@@ -210,7 +259,9 @@ adminRoutes.put("/players/:slug", async (c) => {
 });
 
 adminRoutes.delete("/players/:slug", async (c) => {
-  await query("update players set active = false where slug = $1", [c.req.param("slug")]);
+  const slug = c.req.param("slug");
+  await query("delete from players where slug = $1", [slug]);
+  await deleteCacheKeys(["records:all-time", `player-stats:${slug}`]);
   return c.json({ ok: true });
 });
 

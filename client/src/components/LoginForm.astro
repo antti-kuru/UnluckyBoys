@@ -1,0 +1,61 @@
+<section class="page-head">
+  <h1>Login</h1>
+</section>
+
+<section class="notice" data-login-message hidden></section>
+
+<form class="admin-form compact login-form" data-login-form>
+  <label>Email<input name="email" type="email" value="admin@unluckyboys.local" autocomplete="username" /></label>
+  <label>Password<input name="password" type="password" autocomplete="current-password" /></label>
+  <button class="command" type="submit">Log in</button>
+</form>
+
+<script>
+  import { api, postJson } from "@lib/api";
+
+  type Admin = { email: string; displayName: string };
+
+  const loginForm = document.querySelector<HTMLFormElement>("[data-login-form]");
+  const message = document.querySelector<HTMLElement>("[data-login-message]");
+
+  function showMessage(text: string, error = false) {
+    if (!message) return;
+    message.textContent = text;
+    message.hidden = false;
+    message.classList.toggle("error", error);
+  }
+
+  function formPayload(form: HTMLFormElement) {
+    const data = new FormData(form);
+    const payload: Record<string, FormDataEntryValue> = {};
+    data.forEach((value, key) => {
+      payload[key] = value;
+    });
+    return payload;
+  }
+
+  function adminDestination() {
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+    return next?.startsWith("/") && !next.startsWith("//") ? next : "/admin";
+  }
+
+  async function redirectIfAuthenticated() {
+    const me = await api<{ admin: Admin | null }>("/admin/auth/me");
+    if (me.admin) window.location.replace(adminDestination());
+  }
+
+  loginForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await postJson("/admin/auth/login", formPayload(loginForm));
+      window.location.replace(adminDestination());
+    } catch (caught) {
+      showMessage(caught instanceof Error ? caught.message : "Login failed.", true);
+    }
+  });
+
+  redirectIfAuthenticated().catch(() => {
+    // Stay on the login page if the session check fails.
+  });
+</script>
