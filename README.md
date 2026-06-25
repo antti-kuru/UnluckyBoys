@@ -34,7 +34,7 @@ http://localhost:8000
 
 Traefik dashboard is available at `http://localhost:8080`.
 
-SQLite data is stored locally in `sqlite-data/unlucky-boys.sqlite`. Uploaded news and player images are stored in `uploads/`.
+SQLite data is stored locally in `sqlite-data/unlucky-boys.sqlite`. Uploaded news and player images are mapped to `client/public/news` and `client/public/players` in local Docker Compose.
 
 ## Pages
 
@@ -76,6 +76,8 @@ For a VPS/Dokku deployment, set the values from `project.env.example` as Dokku c
 
 - `/app/data` for the SQLite database
 - `/app/uploads` for uploaded images
+
+Use production values for `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `CORS_ORIGIN`. The app refuses to start in `NODE_ENV=production` if the built-in demo admin credentials or session secret are still configured.
 
 Back up both directories. SQLite is a good fit for this project size, but the database file must live on persistent disk instead of the container filesystem.
 

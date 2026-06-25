@@ -3,10 +3,20 @@ WORKDIR /app/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci
 
+FROM node:22-alpine AS server-prod-deps
+WORKDIR /app/server
+COPY server/package.json server/package-lock.json ./
+RUN npm ci --omit=dev
+
 FROM node:22-alpine AS client-deps
 WORKDIR /app/client
 COPY client/package.json client/package-lock.json ./
 RUN npm ci
+
+FROM node:22-alpine AS client-prod-deps
+WORKDIR /app/client
+COPY client/package.json client/package-lock.json ./
+RUN npm ci --omit=dev
 
 FROM node:22-alpine AS server-build
 WORKDIR /app/server
@@ -35,12 +45,12 @@ ENV SQLITE_MIGRATIONS_DIR=/app/database-migrations
 ENV UPLOAD_ROOT=/app/uploads
 ENV API_BASE_URL=http://127.0.0.1:8000/api
 
-COPY --from=server-deps /app/server/node_modules ./server/node_modules
+COPY --from=server-prod-deps /app/server/node_modules ./server/node_modules
 COPY --from=server-build /app/server/dist ./server/dist
-COPY --from=server-deps /app/server/package.json ./server/package.json
-COPY --from=client-deps /app/client/node_modules ./client/node_modules
+COPY --from=server-prod-deps /app/server/package.json ./server/package.json
+COPY --from=client-prod-deps /app/client/node_modules ./client/node_modules
 COPY --from=client-build /app/client/dist ./client/dist
-COPY --from=client-deps /app/client/package.json ./client/package.json
+COPY --from=client-prod-deps /app/client/package.json ./client/package.json
 COPY database-migrations ./database-migrations
 COPY scripts ./scripts
 

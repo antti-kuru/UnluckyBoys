@@ -5,7 +5,7 @@ import { logger } from "hono/logger";
 import { HTTPException } from "hono/http-exception";
 import bcrypt from "bcryptjs";
 import { ZodError } from "zod";
-import { config } from "./config.js";
+import { config, DEFAULT_ADMIN_EMAIL } from "./config.js";
 import { migrateDatabase, query } from "./lib/db.js";
 import { publicRoutes } from "./routes/public.js";
 import { adminRoutes } from "./routes/admin.js";
@@ -33,13 +33,18 @@ app.onError((error, c) => {
 });
 
 async function ensureDefaultAdmin() {
+  const adminEmail = config.ADMIN_EMAIL.toLowerCase();
   const passwordHash = await bcrypt.hash(config.ADMIN_PASSWORD, 12);
   await query(
     `insert into admins (email, display_name, password_hash)
      values ($1, 'Team Admin', $2)
-     on conflict (email) do nothing`,
-    [config.ADMIN_EMAIL.toLowerCase(), passwordHash]
+     on conflict (email) do update set password_hash = excluded.password_hash, updated_at = now()`,
+    [adminEmail, passwordHash]
   );
+
+  if (adminEmail !== DEFAULT_ADMIN_EMAIL) {
+    await query("delete from admins where email = $1", [DEFAULT_ADMIN_EMAIL]);
+  }
 }
 
 migrateDatabase();

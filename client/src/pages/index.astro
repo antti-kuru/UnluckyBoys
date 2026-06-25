@@ -82,15 +82,46 @@ try {
           emptyText={scheduleError || "No recent results found."}
         />
         <div class="panel x-panel">
-          <div class="x-feed">
+          <div class="x-feed" data-x-feed>
+            <div class="third-party-consent" data-x-consent>
+              <strong>X Feed</strong>
+              <p>
+                Loading the feed connects to X/SociableKit and may allow third-party cookies or storage.
+              </p>
+              <button class="command" type="button" data-x-consent-button>
+                Load X feed
+              </button>
+            </div>
             <iframe
-              src="https://widgets.sociablekit.com/twitter-feed/iframe/25691535"
+              data-src="https://widgets.sociablekit.com/twitter-feed/iframe/25691535"
               width="100%"
               height="1000"
-              title="UnluckyBoysNHL X feed"></iframe>
+              loading="lazy"
+              title="UnluckyBoysNHL X feed"
+              hidden></iframe>
           </div>
         </div>
       </aside>
     </section>
   </div>
+  <script is:inline>
+    const xFeedConsentKey = "ub_x_feed_consent";
+    const xFeedFrame = document.querySelector("[data-x-feed] iframe");
+    const xFeedConsent = document.querySelector("[data-x-consent]");
+    const xFeedButton = document.querySelector("[data-x-consent-button]");
+
+    const loadXFeed = () => {
+      if (!(xFeedFrame instanceof HTMLIFrameElement)) return;
+      xFeedFrame.src = xFeedFrame.dataset.src || "";
+      xFeedFrame.hidden = false;
+      if (xFeedConsent instanceof HTMLElement) xFeedConsent.hidden = true;
+    };
+
+    if (localStorage.getItem(xFeedConsentKey) === "accepted") loadXFeed();
+
+    xFeedButton?.addEventListener("click", () => {
+      localStorage.setItem(xFeedConsentKey, "accepted");
+      loadXFeed();
+    });
+  </script>
 </SiteLayout>

@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -13,6 +13,10 @@ import { createSession, destroySession, getAdminFromSession, requireAdmin } from
 import { syncAllSportsGamerPlayers } from "../integrations/sportsgamer.js";
 
 export const adminRoutes = new Hono();
+
+const loginAttempts = new Map<string, { attempts: number; resetAt: number }>();
+const maxLoginAttempts = 8;
+const loginWindowMs = 15 * 60 * 1000;
 
 function cleanString(value: unknown) {
   return typeof value === "string" ? value.trim() : value;
@@ -80,16 +84,54 @@ const playerSchema = z.object({
   sportsGamerUrl: optionalUrl
 });
 
+function clientAddress(c: Context) {
+  return c.req.header("cf-connecting-ip")
+    ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? "unknown";
+}
+
+function loginAttemptKey(c: Context, email: string) {
+  return `${clientAddress(c)}:${email.toLowerCase()}`;
+}
+
+function isLoginThrottled(key: string) {
+  const attempt = loginAttempts.get(key);
+  if (!attempt) return false;
+  if (attempt.resetAt <= Date.now()) {
+    loginAttempts.delete(key);
+    return false;
+  }
+  return attempt.attempts >= maxLoginAttempts;
+}
+
+function recordFailedLogin(key: string) {
+  const now = Date.now();
+  const attempt = loginAttempts.get(key);
+  if (!attempt || attempt.resetAt <= now) {
+    loginAttempts.set(key, { attempts: 1, resetAt: now + loginWindowMs });
+    return;
+  }
+  attempt.attempts += 1;
+}
+
 adminRoutes.post("/auth/login", async (c) => {
   const credentials = z.object({ email: z.string().email(), password: z.string().min(1) }).parse(await c.req.json());
+  const attemptKey = loginAttemptKey(c, credentials.email);
+
+  if (isLoginThrottled(attemptKey)) {
+    return c.json({ error: "Too many login attempts. Try again later." }, 429);
+  }
+
   const result = await query<{ id: string; email: string; password_hash: string }>(
     "select id, email, password_hash from admins where email = $1",
     [credentials.email.toLowerCase()]
   );
   const admin = result.rows[0];
   if (!admin || !(await bcrypt.compare(credentials.password, admin.password_hash))) {
+    recordFailedLogin(attemptKey);
     return c.json({ error: "Invalid email or password" }, 401);
   }
+  loginAttempts.delete(attemptKey);
   await createSession(c, admin.id);
   return c.json({ ok: true });
 });
