@@ -278,21 +278,16 @@ main {
 .news-card {
   display: grid;
   gap: 0.65rem;
-  min-height: 260px;
   overflow: hidden;
   transition: transform 150ms ease, border-color 150ms ease;
 }
 
 .home-main .news-card {
-  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
-  min-height: 150px;
-  align-items: start;
+  min-height: 0;
 }
 
 .home-main .news-card img {
-  grid-row: 1 / span 3;
-  height: 100%;
-  max-height: 150px;
+  max-height: none;
 }
 
 .news-card:hover,
@@ -302,18 +297,18 @@ main {
 }
 
 .news-card img,
-.news-list-card img,
-.article-page > img {
+.news-list-card img {
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
   border: 1px solid rgba(215, 144, 36, 0.22);
+  background: #050505;
 }
 
 .wide-card h2,
 .card h3 {
-  margin: 0.45rem 0;
+  margin: 0.35rem 0 0;
 }
 
 .game-row,
@@ -1242,19 +1237,16 @@ footer {
 
 .news-list-card {
   display: grid;
-  grid-template-columns: minmax(180px, 0.34fr) minmax(0, 1fr);
   gap: 1rem;
   transition: transform 150ms ease, border-color 150ms ease;
 }
 
 .news-list-card img {
-  grid-row: span 3;
-  height: 100%;
-  min-height: 170px;
+  min-height: 0;
 }
 
 .article-page {
-  overflow: hidden;
+  padding: 1rem 0 3rem;
 }
 
 .article-page-head {
@@ -1263,27 +1255,42 @@ footer {
   margin-left: auto;
 }
 
-.article-page > img {
-  border: 0;
-  border-radius: 0;
-  max-height: 520px;
-}
-
 .article-body {
   width: min(820px, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 2rem 0 3rem;
+  padding: 0;
+  display: grid;
+  gap: 1.15rem;
 }
 
 .article-body h1 {
-  margin: 0.35rem 0 1rem;
+  margin: 0;
   color: var(--gold);
   font-size: clamp(2.2rem, 6vw, 4.6rem);
   line-height: 1;
   letter-spacing: 0;
 }
 
+.article-body .lead {
+  margin: 0;
+}
+
+.article-image {
+  width: 100%;
+  height: auto;
+  max-height: 560px;
+  border: 1px solid rgba(215, 144, 36, 0.22);
+  border-radius: 8px;
+  object-fit: contain;
+  background: #050505;
+}
+
+.article-body time {
+  margin-top: 0.9rem;
+}
+
 .article-body p {
+  margin: 0;
   color: #ffffff;
   line-height: 1.72;
 }
@@ -1292,7 +1299,7 @@ footer {
   position: relative;
   display: grid;
   place-items: center;
-  margin: 1.5rem 0;
+  margin-top: 0.75rem;
   overflow: hidden;
   aspect-ratio: 16 / 9;
   border: 1px solid var(--line);
