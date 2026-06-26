@@ -36,7 +36,7 @@ insert into players (
     'antti-kuru',
     'Antti Kuru',
     'Anhel_Kuru',
-    'RD',
+    'C',
     17,
     'FIN',
     'Right',
