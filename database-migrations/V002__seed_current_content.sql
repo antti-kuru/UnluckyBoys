@@ -147,7 +147,7 @@ insert into players (
   (
     'jukka-salokoski',
     'Jukka Salokoski',
-    'jugeh_',
+    'Jugeh_',
     'LD',
     44,
     'FIN',
