@@ -39,9 +39,8 @@ try {
     return `
       <a class="card wide-card news-list-card" href="/news/${article.slug}">
         <img src="${image}" alt="${article.title}" />
-        <time>${formatDate(article.publishedAt)}</time>
         <h2>${article.title}</h2>
-        <p>${article.summary}</p>
+        <time>${formatDate(article.publishedAt)}</time>
       </a>
     `;
   }
