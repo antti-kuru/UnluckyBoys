@@ -350,6 +350,10 @@ main {
   gap: 0;
 }
 
+.home-main > .section-title:first-child {
+  margin-top: 0;
+}
+
 .x-panel {
   padding: 0;
   overflow: hidden;
