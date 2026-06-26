@@ -60,11 +60,12 @@ const articleVideo = article ? videoPreview(article.videoUrl || firstVideoUrl(ar
   {error && <section class="notice error">{error}</section>}
   {article && (
     <article class="article-page">
-      <img src={article.coverImageUrl || "/brand/banner.png"} alt={article.title} />
       <div class="article-body">
-        <time>{formatDate(article.publishedAt)}</time>
         <h1>{article.title}</h1>
         <p class="lead">{article.summary}</p>
+        <img class="article-image" src={article.coverImageUrl || "/brand/banner.png"} alt={article.title} />
+        <time>{formatDate(article.publishedAt)}</time>
+        <p>{article.body}</p>
         {articleVideo && (
           <a class="article-video" href={articleVideo.url} target="_blank" rel="noreferrer">
             {articleVideo.thumbnailUrl ? (
@@ -76,7 +77,6 @@ const articleVideo = article ? videoPreview(article.videoUrl || firstVideoUrl(ar
             <strong>{articleVideo.label}</strong>
           </a>
         )}
-        <p>{article.body}</p>
       </div>
     </article>
   )}
