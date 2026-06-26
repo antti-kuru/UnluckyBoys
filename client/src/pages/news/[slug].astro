@@ -65,7 +65,7 @@ const articleVideo = article ? videoPreview(article.videoUrl || firstVideoUrl(ar
         <p class="lead">{article.summary}</p>
         <img class="article-image" src={article.coverImageUrl || "/brand/banner.png"} alt={article.title} />
         <time>{formatDate(article.publishedAt)}</time>
-        <p>{article.body}</p>
+        <p class="article-text">{article.body}</p>
         {articleVideo && (
           <a class="article-video" href={articleVideo.url} target="_blank" rel="noreferrer">
             {articleVideo.thumbnailUrl ? (

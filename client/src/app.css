@@ -1295,6 +1295,10 @@ footer {
   line-height: 1.72;
 }
 
+.article-text {
+  white-space: pre-line;
+}
+
 .article-video {
   position: relative;
   display: grid;
