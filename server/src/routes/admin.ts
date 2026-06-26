@@ -175,7 +175,7 @@ adminRoutes.post("/uploads/:kind", async (c) => {
   await mkdir(uploadDirectory, { recursive: true });
   await writeFile(path.join(uploadDirectory, filename), Buffer.from(await image.arrayBuffer()));
 
-  return c.json({ url: `/${kind}/${filename}` }, 201);
+  return c.json({ url: `/api/uploads/${kind}/${filename}` }, 201);
 });
 
 adminRoutes.post("/news", async (c) => {

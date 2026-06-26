@@ -1,8 +1,10 @@
 import { Hono } from "hono";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { cacheJson, readCacheJson, writeCacheJson } from "../lib/cache.js";
 import { query } from "../lib/db.js";
 import { notFound, parsePagination } from "../lib/http.js";
-import { teamNames } from "../config.js";
+import { config, teamNames } from "../config.js";
 import {
   fetchLeaguePlayoffs,
   fetchLeagueStandings,
@@ -14,6 +16,14 @@ import {
 } from "../integrations/sportsgamer.js";
 
 export const publicRoutes = new Hono();
+
+const uploadMimeTypes: Record<string, string> = {
+  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp"
+};
 
 function normalizePlayerRows<T extends { captain?: unknown; alternateCaptain?: unknown }>(rows: T[]) {
   return rows.map((row) => ({
@@ -46,6 +56,30 @@ publicRoutes.get("/news/:slug", async (c) => {
   );
   if (!result.rows[0]) notFound("News article not found");
   return c.json(result.rows[0]);
+});
+
+publicRoutes.get("/uploads/:kind/:filename", async (c) => {
+  const kind = c.req.param("kind");
+  const filename = c.req.param("filename");
+
+  if (!["news", "players"].includes(kind) || !/^[a-f0-9-]+\.(?:gif|jpe?g|png|webp)$/i.test(filename)) {
+    notFound("Upload not found");
+  }
+
+  const extension = path.extname(filename).toLowerCase();
+  const filePath = path.join(config.UPLOAD_ROOT, kind, filename);
+
+  try {
+    const file = await readFile(filePath);
+    return new Response(file, {
+      headers: {
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-type": uploadMimeTypes[extension] ?? "application/octet-stream"
+      }
+    });
+  } catch {
+    notFound("Upload not found");
+  }
 });
 
 publicRoutes.get("/roster", async (c) => {

@@ -74,7 +74,7 @@ export async function uploadImage(path: string, image: File) {
 
   if (!response.ok) {
     const result = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(result.error ?? "Upload failed");
+    throw new Error(result.error ?? `Upload failed (${response.status})`);
   }
 
   return response.json() as Promise<{ url: string }>;

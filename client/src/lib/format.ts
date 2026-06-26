@@ -1,5 +1,10 @@
 export function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("fi-FI", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    hourCycle: "h23",
+    timeZone: "Europe/Helsinki"
+  }).format(new Date(value));
 }
 
 export function playerInitials(name: string) {
