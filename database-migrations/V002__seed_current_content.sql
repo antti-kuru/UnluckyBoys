@@ -129,6 +129,22 @@ insert into players (
     'https://sportsgamer.gg/players/966'
   ),
   (
+    'j-arjalainen',
+    'J Arjalainen',
+    'Arjalainen',
+    'RD',
+    88,
+    'FIN',
+    'Left',
+    0,
+    0,
+    '/brand/arjalainen.png',
+    'Arjalainen brought a steady left-handed presence to the Unlucky Boys blue line and earned his place among the names remembered in the burger jersey.',
+    0,
+    12,
+    null
+  ),
+  (
     'julius-rissanen',
     'Julius Rissanen',
     'Julius97_',
@@ -141,7 +157,7 @@ insert into players (
     '/brand/julius97.png',
     'Julius joined UB in IS Cup 4 before the start of ECL 9. He quickly became the backbone of UB''s defence and the simplicity of his game was always his strength. Julius always said what he thought, and it was often a good awakening for the rest of us if we played poorly. Julius97_ had astonishing chemistry with Jm98II, as they constantly knew what each other were doing on the left side.',
     0,
-    12,
+    13,
     'https://sportsgamer.gg/players/369'
   ),
   (
@@ -157,7 +173,7 @@ insert into players (
     '/brand/jugeh.png',
     'Jugeh_ was one of the first acquisitions of Unlucky Boys HC back in ECL 5. He was scouted as a solid two-way defenseman playing for White Trash. After long and tough negotiations, we managed to reach an agreement. Jugeh_ represented the burger jersey for a total of 6 ECL seasons.',
     0,
-    13,
+    14,
     'https://sportsgamer.gg/players/47'
   ),
   (
@@ -173,7 +189,7 @@ insert into players (
     '/brand/friilander.png',
     'Friilander was the Ari Vallin type of defenseman during his long spell in Unlucky Boys. The laugh he brought to the dressing room was unmatched. Aki played a crucial role in the history of UB and the fans loved his relentless game style.',
     0,
-    14,
+    15,
     'https://sportsgamer.gg/players/787'
   ),
   (
@@ -189,7 +205,7 @@ insert into players (
     '/brand/timasy.png',
     'Timasy joined UB in ECL 10. It was an interesting transfer as Timasy became the first non-Finnish outfield player of UB. There was a reason to take the risk, as we saw huge potential in him. The chemistry started clicking instantly, and in ECL 10 UB played its best offensive game thanks to Timasy. Timasy is an extremely humble and competitive person who has a special place in UB history.',
     0,
-    15,
+    16,
     'https://sportsgamer.gg/players/1468'
   ),
   (
@@ -205,7 +221,7 @@ insert into players (
     '/brand/eissi83.png',
     'The original goalie of Unlucky Boys, the father Eissi83 brought experience to our young team back in the day. He was always a solid goalie for us, helping achieve the ECL 5 Pro finals. He was so good that for the following season Written In The Sky, an elite team, wanted to get him and they did.',
     0,
-    16,
+    17,
     'https://sportsgamer.gg/players/679'
   ),
   (
@@ -221,7 +237,7 @@ insert into players (
     '/brand/viltzup.png',
     'Viltzup joined UB in ECL 7 from Lite team Club De Caballeros. This was proof of the quality of UB scouting, as Viltzup instantly became one of the best goalies in Elite. He had to stand on his head multiple times and we are always thankful for his commitment to the team. Highlight: ECL 10 playoffs.',
     0,
-    17,
+    18,
     'https://sportsgamer.gg/players/883'
   ),
   (
@@ -237,7 +253,7 @@ insert into players (
     '/brand/benuh.png',
     'Looking back on UB history, we have somehow been able to sign tremendous goalies one after another. Benuh_ was no exception, as he instantly showed he belonged in Elite during his debut Elite season in the burger jersey, ECL 12. Calm as you like in net and especially good at saving breakaways. UB could charge a player development fee from the success of Benuh_''s career.',
     0,
-    18,
+    19,
     'https://sportsgamer.gg/players/27'
   ),
   (
@@ -253,7 +269,7 @@ insert into players (
     '/brand/mozja.png',
     'Mozja came from Pro to replace Anhel_Kuru during his military service. The scouting report was that his mechanical skills were something UB/YMCA fans had never experienced before. Mozja grew a lot as a player during two seasons with YMCA Esports. After departing, he reached his peak elsewhere in Sawo Esports and Tunnel Vision and is currently still one of the smartest players out there for INCOACH. UB could charge a player development fee from the success of Mozjayh''s career.',
     0,
-    19,
+    20,
     'https://sportsgamer.gg/players/3485'
   ),
   (
@@ -269,7 +285,7 @@ insert into players (
     '/brand/sokkelo.png',
     'Sokkelo__, Mr. Positive, joined YMCA in ECL 22 Winter. The rumours of Sokkelo''s positivity were correct, as he always supported us even though we were losing 7-0. Sokkelo was a fan favourite, although some fans became annoyed by the tripping penalties in the offensive zone. Those were his speciality. The upside covered the penalties, as Sokkelo was always eager to score goals.',
     0,
-    20,
+    21,
     'https://sportsgamer.gg/players/2423'
   ),
   (
@@ -285,7 +301,7 @@ insert into players (
     '/brand/jamoyy.png',
     'Jamoyy was scouted from Pro to join YMCA Esports for ECL 11. He was a skillful defenseman and you did not always know what he was going to do, both in a positive and negative way. Jamoyy brought joy into the party as an extremely fun dude from Kankaanpaa Pori, which is an accomplishment.',
     0,
-    21,
+    22,
     'https://sportsgamer.gg/players/3054'
   );
 
